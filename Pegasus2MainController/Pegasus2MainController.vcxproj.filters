@@ -1,0 +1,182 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source files">
+      <UniqueIdentifier>{b3976dca-0695-4aad-89ee-09c0bf0ab9b9}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header files">
+      <UniqueIdentifier>{56ef61a0-ec04-4c3b-8f8a-8136916589d3}</UniqueIdentifier>
+      <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource files">
+      <UniqueIdentifier>{efcd2399-bd8c-4128-8e39-a52c969ecec2}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav</Extensions>
+    </Filter>
+    <Filter Include="Make files">
+      <UniqueIdentifier>{00d38dd5-9655-4049-9074-f7e93a8512f9}</UniqueIdentifier>
+      <Extensions>*.mak</Extensions>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Pegasus2MainController.cpp">
+      <Filter>Source files</Filter>
+    </ClCompile>
+    <ClCompile Include="AltitudeCalc.cpp">
+      <Filter>Source files</Filter>
+    </ClCompile>
+    <ClCompile Include="Event.cpp">
+      <Filter>Source files</Filter>
+    </ClCompile>
+    <ClCompile Include="Timer.cpp">
+      <Filter>Source files</Filter>
+    </ClCompile>
+    <ClCompile Include="AltitudePressureValues.cpp">
+      <Filter>Source files</Filter>
+    </ClCompile>
+    <ClCompile Include="parse.c">
+      <Filter>Source files</Filter>
+    </ClCompile>
+    <ClCompile Include="parser.c">
+      <Filter>Source files</Filter>
+    </ClCompile>
+    <ClCompile Include="tok.c">
+      <Filter>Source files</Filter>
+    </ClCompile>
+    <ClCompile Include="context.c">
+      <Filter>Source files</Filter>
+    </ClCompile>
+    <ClCompile Include="generate.c">
+      <Filter>Source files</Filter>
+    </ClCompile>
+    <ClCompile Include="generator.c">
+      <Filter>Source files</Filter>
+    </ClCompile>
+    <ClCompile Include="gmath.c">
+      <Filter>Source files</Filter>
+    </ClCompile>
+    <ClCompile Include="info.c">
+      <Filter>Source files</Filter>
+    </ClCompile>
+    <ClCompile Include="sentence.c">
+      <Filter>Source files</Filter>
+    </ClCompile>
+    <ClCompile Include="time.c">
+      <Filter>Source files</Filter>
+    </ClCompile>
+    <ClCompile Include="MessageValidation.cpp">
+      <Filter>Source files</Filter>
+    </ClCompile>
+    <ClCompile Include="I2CTransfer.cpp">
+      <Filter>Source files</Filter>
+    </ClCompile>
+    <ClCompile Include="UartStream.cpp">
+      <Filter>Source files</Filter>
+    </ClCompile>
+    <ClCompile Include="GpsData.cpp">
+      <Filter>Source files</Filter>
+    </ClCompile>
+    <ClCompile Include="GpsProcessor.cpp">
+      <Filter>Source files</Filter>
+    </ClCompile>
+    <ClCompile Include="GpioCtrl.cpp">
+      <Filter>Source files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Makefile" />
+    <None Include="debug.mak">
+      <Filter>Make files</Filter>
+    </None>
+    <None Include="release.mak">
+      <Filter>Make files</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Pegasus2MainController.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="AltitudeCalc.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="Event.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="Timer.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="AltitudePressureValues.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="nmea.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="parse.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="parser.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="tok.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="config.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="context.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="generate.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="generator.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="gmath.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="sentence.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="info.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="time.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="units.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="MessageValidation.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="I2CTransfer.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="UartStream.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="GpsData.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="GpsProcessor.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="CommandProcessor.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="bcm2835_gpio.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="rpiGpio.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="GpioCtrl.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="P2CraftTestTelemtry.txt" />
+    <Text Include="ProjectedGpsLocation.txt" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,562 @@
+//#include <TFT.h>  // Arduino LCD library
+//#include <SPI.h>
+#include <Wire.h>
+#include <string.h> // strlen
+//#include <ctype.h>  // isspace
+#include <Adafruit_NeoPixel.h>
+#include "NeoPatterns.h"
+#include <Timer.h>
+#include <avr/wdt.h>
+#include <SoftwareSerial/SoftwareSerial.h>
+
+// pin definition for the Uno
+#define CS_PIN                                                  10
+#define DC_PIN                                                   9
+#define RST_PIN                                                  8
+
+#define DATA_ARRAY_STR_LEN                                      16
+#define USER_MSG_MAX_LEN                                        80
+#define USER_MSG_ADJUSTED_MAX_LEN          (USER_MSG_MAX_LEN + 20)
+#define ROW_COUNT                                                6
+#define ROW_LENGTH                                              13
+#define MAX_WORD_COUNT                                          20
+#define PIXEL_OFFSET                                            20
+
+#define I2C_ADDRESS                                           0x06
+
+#define NEOPIXEL_PIN                                             6
+
+// How many NeoPixels are attached to the Arduino?
+#define NUMPIXELS                                               25
+
+#ifndef TRUE
+#define TRUE                                                     1
+#endif
+
+#ifndef FALSE
+#define FALSE                                                    0
+#endif
+
+void clear_display();
+void Ring1Complete();
+
+char words[MAX_WORD_COUNT][DATA_ARRAY_STR_LEN];
+char rows[ROW_COUNT][DATA_ARRAY_STR_LEN];
+char aligned_msg[USER_MSG_ADJUSTED_MAX_LEN];
+char tmp_text[USER_MSG_ADJUSTED_MAX_LEN];
+
+// create an instance of the library
+//TFT TFTscreen = TFT(CS_PIN, DC_PIN, RST_PIN);
+
+Timer _timer;
+
+NeoPatterns Ring1(NUMPIXELS, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800, &Ring1Complete);
+
+int8_t _clearTimerId = 0;
+
+char* _startup_text = "-- PEGASUS II -- Time to fly!";
+char* _thank_msr = "PEGASUS II thanks our partnership with Microsoft Research!";
+char* _people_of_earth = "People of Earth, We mean you no harm!  No, Really!";
+char* _pegasus = "PEGASUS II Flight Leads Mark Nichols & Matt Long";
+char* _himom = "Hi Mom! I'm in near space!";
+char* _reached_100k = "PEGASUS II: We reached our altitude goal... 100,000 Feet!";
+char* _going_down = "Going down!";
+char* _going_up = "Going up!";
+
+
+int userTextBytesRead = 0;
+uint8_t displayTextLength;
+
+
+
+
+// Ring1 Completion Callback
+void Ring1Complete()
+{
+    Ring1.Reverse();
+}
+
+
+//char *trim(char *s)
+//{
+//    if (s == NULL) { return NULL; }
+//
+//    int len = strlen(s);
+//
+//    if (len == 0) { return NULL; }
+//
+//    while (*s && isspace(*s)) {
+//        s++;
+//    }
+//
+//    len = strlen(s);
+//
+//    if (len == 0) { return NULL; }
+//
+//    char* back = s + (len - 1);
+//
+//    if (isspace(*back)) {
+//        while (*back && isspace(*--back));
+//
+//        *(back + 1) = '\0';
+//    }
+//
+//    return s;
+//}
+//
+//
+//int findChar(char *dataIn, char charToFind, int startChar) {
+//
+//    if (dataIn == NULL) return -1;
+//    if (startChar < 0) return -1;
+//
+//    int currentChar = startChar;
+//
+//    do {
+//        if (dataIn[currentChar] == charToFind || dataIn[currentChar] == 0) {
+//            return currentChar;
+//        }
+//
+//        currentChar++;
+//
+//    } while (dataIn[currentChar] != 0);
+//
+//    return -1;
+//}
+//
+//
+//char* align_words(char* msg) {
+//
+//    if (msg == NULL) return NULL;
+//
+//    msg = trim(msg);
+//
+//    if (msg == NULL) {
+//        return NULL;
+//    }
+//
+//    int len = strlen(msg);
+//
+//    if (len > USER_MSG_MAX_LEN) return NULL;
+//
+//    int i;
+//    int j;
+//    int wordCount = 0;
+//
+//    for (i = 0; i < len; i++) {
+//        if ((ispunct(msg[i])) && (msg[i + 1] != ' ')) {
+//
+//            msg[len + 2] = '\0';
+//
+//            for (j = len + 1; j > i + 1; j--){
+//                msg[j] = msg[j - 1];
+//            }
+//            msg[i + 1] = ' ';
+//            len++;
+//        }
+//    }
+//
+//    trim(msg);
+//
+//    return msg;
+//}
+//
+//
+//int count_words(char* msg) {
+//
+//    if (msg == NULL) return 0;
+//
+//    msg = trim(msg);
+//
+//    int len = strlen(msg);
+//
+//    if (len > USER_MSG_MAX_LEN) return 0;
+//
+//    int i;
+//    int wordCount = 0;
+//
+//    for (i = 0; i < len; i++) {
+//        if (msg[i] == ' ') {
+//            wordCount++;
+//        }
+//    }
+//
+//    return wordCount + 1;
+//}
+//
+//
+//int splitDataIntoArray(char *dataIn, char dataArray [][DATA_ARRAY_STR_LEN], int arraySize, char delimiter) {
+//
+//    int pos = -1;
+//    int currentPos = 0;
+//
+//    for (int i = 0; i < arraySize; i++) {
+//        pos = findChar(dataIn, delimiter, currentPos);
+//
+//        dataIn[pos] = 0;
+//
+//        strcpy(dataArray[i], trim(&dataIn[currentPos]));
+//
+//        currentPos = pos + 1;
+//
+//        if (pos == -1) {
+//            return(i + 1);
+//            break;
+//        }
+//    }
+//
+//    return arraySize + 1;
+//}
+//
+//void clear_rows() {
+//    int i;
+//    int j;
+//
+//    for (i = 0; i < ROW_COUNT; i++) {
+//        for (j = 0; j < ROW_LENGTH; j++) {
+//            rows[i][j] = ' ';
+//        }
+//        rows[i][ROW_LENGTH] = '\0';
+//    }
+//}
+//
+//
+//int build_rows(int wordCount) {
+//
+//    int rowIndex = 0;
+//    int rowLetterCount = 0;
+//    int wordIndex = 0;
+//    int wordLen;
+//    int i;
+//
+//    for (i = 0; i < wordCount; i++) {
+//        wordLen = strlen(words[wordIndex]);
+//
+//        if (wordLen < ROW_LENGTH) {
+//            if ((wordLen + rowLetterCount) > ROW_LENGTH){
+//                rowLetterCount = 0;
+//                rowIndex++;
+//            }
+//
+//            strcpy(&rows[rowIndex][rowLetterCount], words[wordIndex]);
+//
+//            rowLetterCount += wordLen;
+//            rows[rowIndex][rowLetterCount] = ' ';
+//            rowLetterCount++;
+//            wordIndex++;
+//
+//        }
+//    }
+//
+//    return rowIndex + 1;
+//}
+
+
+void ring_update() {
+
+    Ring1.Update();
+}
+
+
+void leds_on(bool onOff){
+
+    Serial.print("LED's ");
+    
+    if (onOff) {
+      Serial.println("ON!");
+    }
+    else {
+      Serial.println("OFF!");
+    }
+    
+    if (onOff) {
+        Ring1.setBrightness(255);
+    }
+    else {
+        Ring1.setBrightness(0);
+    }
+}
+
+
+
+//void draw_rows() {
+//
+//    int i;
+//    int rowPixelPos = 0;
+//    
+//    for (i = 0; i < ROW_COUNT; i++) {
+//        
+//        TFTscreen.text(rows[i], 1, rowPixelPos);
+//
+//        rowPixelPos += PIXEL_OFFSET;
+//    }
+//}
+//
+//
+//void display_text() {
+//
+//    int count = 0;
+//    int numberOfRows;
+//    int tmpLength = strlen(tmp_text);
+//
+//    clear_display();
+//
+//    if (tmpLength > 0) {
+//        char* alignedPtr = align_words(tmp_text);
+//
+//        if (alignedPtr) {
+//            strcpy(aligned_msg, alignedPtr);
+//
+//            if (aligned_msg) {
+//                count = count_words(aligned_msg);
+//
+//                if (count) {
+//                    int arrayCount = splitDataIntoArray(aligned_msg, words, count, ' ');
+//
+//                    numberOfRows = build_rows(count);
+//                }
+//            }
+//        }
+//    }
+//    
+//    tmp_text[0] = '\0';  // Clear the text to display buffer
+//
+//    draw_rows();
+//}
+//
+//
+//void clear_display() {
+//
+//    if (_clearTimerId) {
+//        _timer.stop(_clearTimerId);
+//    }
+//    
+//    _clearTimerId = 0;
+//    
+//    TFTscreen.fillScreen(0);
+//
+//    clear_rows();
+//
+//    draw_rows();
+//}
+
+void display_text()
+{
+    if (tmp_text == NULL) return;
+
+    Serial1.println(tmp_text);
+}
+
+// callback for received data
+void receiveData(int byteCount) {
+
+    if (byteCount == 1) {
+        int command = Wire.read();
+
+        switch (command) {
+            case 0:         // Reset Things
+                Serial.println("Reset");
+                tmp_text[0] == '\0';
+                userTextBytesRead = 0;
+                displayTextLength = 0;
+                break;
+            case 1:         // Turn LEDs On
+                Serial.println("Turn LEDs On");
+                leds_on(TRUE);
+                break;
+            case 2:         // Turn LEDs Off
+                Serial.println("Turn LEDs Off");
+                leds_on(FALSE);
+                break;
+            case 3:         // Display MSR Thanks
+                Serial.println("Display 3");
+                strcpy(tmp_text, _thank_msr);
+                display_text();
+                break;
+            case 4:         // Display People of Earth
+                Serial.println("Display 4");
+                strcpy(tmp_text, _people_of_earth);
+                display_text();
+                break;
+            case 5:         // Display Pegasus Flight Team
+                Serial.println("Display 5");
+                strcpy(tmp_text, _pegasus);
+                display_text();
+                break;
+            case 6:         // Display Hi Mom
+                Serial.println("Display 6");
+                strcpy(tmp_text, _himom);
+                display_text();
+                break;
+            case 7:         // Display Pegasus Flight Team
+                Serial.println("Display 7");
+                strcpy(tmp_text, _reached_100k);
+                display_text();
+                break;
+            case 8:         // Display Hi Mom
+                Serial.println("Display 8");
+                strcpy(tmp_text, _going_down);
+                display_text();
+                break;            
+            case 9:         // Display Hi Mom
+                Serial.println("Display 8");
+                strcpy(tmp_text, _going_up);
+                display_text();
+                break;
+            default:
+                Serial.print("default - error: # ");
+                Serial.println(command);
+                break;
+        }
+
+        tmp_text[0] == '\0'; // Clear this just to make sure
+
+        _clearTimerId = _timer.after(4000, clear_display);
+        
+    }
+    else {
+
+        int byteCountToRead = byteCount;
+        
+        if (tmp_text[0] == '\0') {
+            displayTextLength = (uint8_t) Wire.read();
+
+            byteCountToRead--;
+        }
+
+        size_t size = Wire.readBytes(&tmp_text[userTextBytesRead], byteCountToRead);
+
+        userTextBytesRead += size;
+
+        if (displayTextLength == userTextBytesRead) {
+
+            tmp_text[userTextBytesRead] = '\0';
+
+            display_text();  
+
+            tmp_text[0] == '\0';
+            userTextBytesRead = 0;
+            displayTextLength = 0;
+        }
+    }
+}
+
+
+
+
+void watchdogSetup()
+{
+    cli();  // Disables the interrupts so no other interrupts get called while we are setting up
+
+    wdt_reset();
+
+    /*
+       WDP  WDP  WDP  WDP  Time - out
+        3    2    1    0     (ms)
+        0    0    0    0      16
+        0    0    0    1      32
+        0    0    1    0      64
+        0    0    1    1     125
+        0    1    0    0     250
+        0    1    0    1     500
+        0    1    1    0    1000
+        0    1    1    1    2000
+        1    0    0    0    4000
+        1    0    0    1    8000
+    */
+
+        /*
+        WDTCSR configuration:
+        WDIE = 1: Interrupt Enable
+        WDE = 1 :Reset Enable
+        WDP3 = 0 :For 2000ms Time-out
+        WDP2 = 1 :For 2000ms Time-out
+        WDP1 = 1 :For 2000ms Time-out
+        WDP0 = 1 :For 2000ms Time-out
+        */
+
+        // Enter WatchDog configuration mode:
+        // (1 << 5) generated a byte with all zeros and one 1 at the 5th (counting from zero) bit from the right.
+        // hence, for example, (1<<WDCE) generates "00010000", since WDCE=4 (see datasheet 10.9.2)
+        WDTCSR |= (1 << WDCE) | (1 << WDE);
+
+    // Set WatchDog Settings:
+    //WDTCSR = (1<<WDE) | (1<<WDP3) | (1<<WDP2) | (1<<WDP1) | (1<<WDP0);
+    WDTCSR = (1 << WDIE) | (1 << WDE) | (1 << WDP2) | (1 << WDP1) | (1 << WDP0);  // 2 seconds
+    //WDTCSR = (1 << WDIE) | (1 << WDE) | (1 << WDP3) | (1 << WDP0);  // 8 seconds
+
+    sei(); // enable interrupts
+}
+
+
+void watchdog_reset() {
+    wdt_reset();
+}
+
+
+void turn_leds_off() {
+    leds_on(FALSE);
+}
+
+
+void draw_startup_text() {
+
+    strcpy(tmp_text, _startup_text);
+
+    display_text();
+}
+
+
+void tick() {
+    Serial.println("-");
+}
+
+
+void setup()
+{
+    Serial.begin(115200);
+    Serial1.begin(9600);
+
+    Wire.begin(I2C_ADDRESS);
+
+    Wire.onReceive(receiveData);
+    
+    //// Initialize all the pixelStrips
+    //// Put this line at the beginning of every sketch that uses the GLCD:
+    //TFTscreen.begin();
+
+    //// clear the screen with a black background
+    //TFTscreen.background(0, 0, 0);
+
+    //// write the static text to the screen
+    //// set the font color to white
+    //TFTscreen.stroke(96, 96, 96);
+    //// set the font size
+    //TFTscreen.setTextSize(2);
+
+    Ring1.begin();
+    
+    // Kick off a pattern
+    Ring1.TheaterChase(Ring1.Color(255, 255, 0), Ring1.Color(0, 0, 0), 100);
+
+    watchdogSetup();
+
+    _timer.every(250, ring_update);
+
+    //_timer.every(2000, tick);
+
+    _timer.after(8000, turn_leds_off);
+
+    _timer.every(1000, watchdog_reset);
+
+    _timer.oscillate(LED_BUILTIN, 1000, HIGH, 10);
+
+    draw_startup_text();
+}
+
+
+void loop()
+{
+    _timer.update();
+}
+
