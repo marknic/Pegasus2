@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
 VisualStudioVersion = 14.0.24720.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LinuxCallPythonFromC", "LinuxCallPythonFromC\LinuxCallPythonFromC.vcxproj", "{2323C644-1D63-4A0A-8423-5E67A22CA9BE}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Pegasus2EpaperDisplay", "Pegasus2EpaperDisplay\Pegasus2EpaperDisplay.vcxproj", "{2323C644-1D63-4A0A-8423-5E67A22CA9BE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

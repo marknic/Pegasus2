@@ -19,7 +19,7 @@
 #define ARDUINO_ARCH_AVR
 #define USB_VID 0x2341
 #define USB_PID 0x8037
-#define __cplusplus
+#define __cplusplus 201103L
 #define __AVR__
 #define __inline__
 #define __asm__(x)

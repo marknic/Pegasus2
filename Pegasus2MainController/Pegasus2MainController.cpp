@@ -157,7 +157,7 @@ time_t _current_time;
 
 bool _balloon_released = FALSE;
 
-int _craft_messages = 0;
+int _telemetry_count = 0;
 
 MessageValidation _messageValidator;
 
@@ -224,6 +224,10 @@ size_t lineLength;
 char* line;
 
 FILE* _altitude_data_fp;
+
+int _testStepCounter = 0;
+int _delayCounter = 0;
+int _testDelayTargetCount = 0;
 
 int get_altitude_index(double altitude);
 void TestStep();
@@ -660,6 +664,62 @@ int findChar(char *dataIn, char charToFind, int startChar) {
 
 
 
+
+
+int strsplit(const char* str, const char* delim, char dataArray[][DATA_ARRAY_STR_LEN]) {
+    // copy the original string so that we don't overwrite parts of it
+    // (don't do this if you don't need to keep the old line,
+    // as this is less efficient)
+    char *s = strdup(str);
+
+        // these three variables are part of a very common idiom to
+        // implement a dynamically-growing array
+    size_t tokens_alloc = 1;
+    size_t tokens_used = 0;
+    
+    char **tokens = (char**) calloc(tokens_alloc, sizeof(char*));
+
+    char *token, *strtok_ctx;
+    for (token = strtok_r(s, delim, &strtok_ctx); token != NULL; token = strtok_r(NULL, delim, &strtok_ctx)) 
+    {
+        // check if we need to allocate more space for tokens
+        if (tokens_used == tokens_alloc) {
+            tokens_alloc *= 2;
+            tokens = (char**) realloc(tokens, tokens_alloc * sizeof(char*));
+        }
+        
+        tokens[tokens_used++] = strdup(token);
+    }
+
+        // cleanup
+    if (tokens_used == 0) {
+        free(tokens);
+        tokens = NULL;
+    
+    }
+    else {
+        tokens = (char**) realloc(tokens, tokens_used * sizeof(char*));
+    }
+    
+    free(s);
+    
+    for (size_t i = 0; i < tokens_used; i++) 
+    {
+//		strcpy(words[i], tokens[i]);
+        
+        printf("    token: \"%s\"\n", tokens[i]);
+        free(tokens[i]);
+    }
+    
+    if (tokens != NULL)
+    {
+        free(tokens);
+    }
+
+    return tokens_used;
+}
+
+
 /**
 * \fn splitDataIntoArray
 * \brief Splits a character into a array based on a comma delimiter
@@ -943,7 +1003,7 @@ double calculate_vertical_speed(double altitude, double seconds) {
     
     double abs_mps = myfabs(mps);
 
-    printf("VS: alt: %.1f  prev: %.1f  sec: %.1f  mps: %.1f\n", altitude, previousAltitude, seconds, abs_mps);
+    //printf("VS: alt: %.1f  prev: %.1f  sec: %.1f  mps: %.1f\n", altitude, previousAltitude, seconds, abs_mps);
 
     previousAltitude = altitude;
 
@@ -1001,8 +1061,7 @@ void send_telemetry() {
 
     _balloonSwitchValue = !digitalRead(GPIO_PIN_BALLOON);
     _parachuteSwitchValue = !digitalRead(GPIO_PIN_PARACHUTE);
-
-
+    
 #if (TEST_TELEMETRY)
 
     switch (_balloon_state) {
@@ -1216,20 +1275,15 @@ sprintf(sensorData, "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s",
         );
 
     
-    printf("%d\n", ++_craft_messages);
+    
+    //if (_gps_data1_attached) {
+        //printf("GPS 1 Attached - ");
+    //}
+//
+    //if (_gps_data2_attached) {
+        //printf("GPS 2 Attached - ");
+    //}
 
-    if (_gps_data1_attached) {
-        printf("GPS 1 Attached - ");
-    }
-
-    if (_gps_data2_attached) {
-        printf("GPS 2 Attached - ");
-    }
-
-    printf("GPS: %s", gpsDataPtr);
-
-    printf("   --  Vertical Speed: %.1f\n", _vertical_speed);
-   
     evaluate_data();
 
     safety_switch_check();
@@ -1238,8 +1292,27 @@ sprintf(sensorData, "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s",
 
     strcat(_telemetry_data_string, "\n");
 
-    printf("Telem: %s\n", _telemetry_data_string);
+    //printf("Telem: %s\n", _telemetry_data_string);
+    printf("TelemetryCount: %d\n", ++_telemetry_count);
 
+    printf("air: %f | alt: %f | PresTmp: %f | Humidity: %f | Tmp36: %f | Thermo: %f | ReceptErrs: %d\n", 
+        pressure,
+        _current_altitude,
+        pressureTemp,
+        humidity,
+        tmp36,
+        thermoCouple,
+        _messageValidator.getReceptionErrorCount());
+    printf("VMain: %f | VAux: %f\n", voltageMain, voltageAux);
+    printf("Geiger: %s | UV: %f | PicCount: %d | LedsOn: %d | AltDeploy: %d | MinToRelease: %d\n", geiger, uv, _pictureCount, _ledsOnOff, _altitude_for_deploy, _minutes_till_release);
+    
+    char gps1Attached[2];
+    if (_gps_data1_attached) { strcpy(gps1Attached, "Y"); } else { strcpy(gps1Attached, "N"); }
+    char gps2Attached[2];
+    if (_gps_data2_attached) { strcpy(gps2Attached, "Y"); } else { strcpy(gps2Attached, "N"); }
+    
+    printf("GPS: %s | VertSpeed: %f | GPS1Attach: %s | GPS2Attach: %s \n\n", gpsDataPtr, _vertical_speed, gps1Attached, gps2Attached);
+    
     write_to_log("TEL", _telemetry_data_string);
 
     _serialStream_Radio->uart_transmit(_telemetry_data_string);
@@ -1675,6 +1748,7 @@ void end_warmup_period() {
 
 #if (TEST_TELEMETRY) 
 
+// Called when the balloon is released or 
 int get_altitude_index(double altitude) {
 
     for (int i = 0; i < _altitude_table_size; i++) {
@@ -1686,15 +1760,19 @@ int get_altitude_index(double altitude) {
     return -1;
 }
 
-double get_current_altitude(double altitude, bool falling) {
-
-    static bool is_falling = false;
-
-    if (!is_falling && falling) {  // just started falling
-
-    }
-
-}
+//double get_current_altitude(double altitude, bool falling) {
+//
+    //static bool is_falling = false;
+//
+    //if (!is_falling && falling) {  // just started falling
+//
+        ////int x = asdf;
+        //is_falling = TRUE;
+        //
+        //
+    //}
+//
+//}
 
 
 void load_altitude_table() {
@@ -1746,9 +1824,7 @@ void load_altitude_table() {
  
 
 
-int _testStepCounter = 0;
-int _delayCounter = 0;
-int _testDelayTargetCount = 0;
+
 
 void TestStep()
 {
@@ -1958,8 +2034,11 @@ int main(int argc, char *argv [])
     
 #if (TEST_TELEMETRY)
 
+    // Load Altitude table for testing - Contains data to simulate falling. 
+    //  Rising is handled through simple addition of a constant rise rate.
     load_altitude_table();
 
+    // Zero out starting and ending positions 
     _balloon_starting_position.lat = 0.0;
     _balloon_starting_position.lon = 0.0;
     _balloon_starting_position.alt = 0.0;
@@ -1968,8 +2047,9 @@ int main(int argc, char *argv [])
     _balloon_ending_position.lon = 0.0;
     _balloon_ending_position.alt = 0.0;
 
+    // Open the projected start / end GPS coordinates
     FILE* gpsFileHandle_fp;
-    const char* gpsFile = "/home/pi/p2data/ProjectedGpsLocation.txt";
+    const char* gpsFile = GPS_PROJECTION_DATA_FILE;
 
     gpsFileHandle_fp = fopen(gpsFile, "r");
 
@@ -2089,7 +2169,7 @@ int main(int argc, char *argv [])
 
     _telemetry_timer.every(1000, get_m1_data);
     
-    _telemetry_timer.every(50, send_telemetry);
+    _telemetry_timer.every(2000, send_telemetry);
     
     int received0;
 

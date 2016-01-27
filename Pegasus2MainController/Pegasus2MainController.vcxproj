@@ -84,6 +84,10 @@
     <ClCompile Include="UartStream.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="altitude_data.csv">
+      <FileType>Text</FileType>
+      <DeploymentContent>true</DeploymentContent>
+    </None>
     <None Include="debug.mak" />
     <None Include="Makefile" />
     <None Include="release.mak" />

@@ -63,7 +63,7 @@
 
 #define GPS_OFFSET_SHIFT_AMOUNT                        0.0002
 
-latLonAlt _launchStationPosition;
+latLonAlt _launchStationPosition;  
 latLonAlt _balloonPosition;
 azDistVals _calculatedValuesBalloon;
 

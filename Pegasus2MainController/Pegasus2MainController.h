@@ -127,5 +127,6 @@
 
 
 #define TELEMETRY_LOG_FILE					"/home/pi/PegasusMission/telemetryLog.txt"
+#define GPS_PROJECTION_DATA_FILE            "/home/pi/p2data/ProjectedGpsLocation.txt"
 #define IS_GPS								  1
 #define IS_PROC2							  2
