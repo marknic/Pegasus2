@@ -575,6 +575,7 @@ double get_servo_elevation_target(double target_angle) {
     return ((target_angle - _degrees_low) * _servo_move_per_degree) + SERVO_ELEVATION_LOW;
 }
 
+
 void center_and_initialize() {
 
     Serial.println("Resetting");

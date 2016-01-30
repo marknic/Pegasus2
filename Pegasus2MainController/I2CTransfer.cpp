@@ -1,4 +1,6 @@
 #include "I2CTransfer.h"
+#include <stdint.h>
+
 
 I2CTransfer::I2CTransfer(uint8_t i2c_address) {
     
@@ -99,7 +101,6 @@ char* I2CTransfer::get_i2c_string(char* buffer, int length) {
 
 void I2CTransfer::send_user_text(char* userText) {
 
-    //printf("I2C: Connecting\n");
     int totalLength;
 
     if (userText == NULL) {
@@ -113,11 +114,9 @@ void I2CTransfer::send_user_text(char* userText) {
     }
 
     if ((_file = open(DEVICE_NAME, O_RDWR)) < 0) {
-        fprintf(stderr, "I2C: Failed to access %d\n", DEVICE_NAME);
+        fprintf(stderr, "I2C: Failed to access %s\n", DEVICE_NAME);
         return;
     }
-
-    //printf("I2C: acquiring bus to 0x%x\n", _i2c_address);
 
     if (ioctl(_file, I2C_SLAVE, _i2c_address) < 0) {
         fprintf(stderr, "I2C: Failed to acquire bus access/talk to slave 0x%x\n", _i2c_address);

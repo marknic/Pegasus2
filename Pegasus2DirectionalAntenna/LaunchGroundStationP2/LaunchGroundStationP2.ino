@@ -1,11 +1,12 @@
 #include <Wire.h>
-#include <math.h>
 #include <PegasusCommandProcessor.h>
 #include "AzimuthElevation.h"
 #include "MessageValidation.h"
 #include <Timer.h>
 #include <avr/wdt.h>
 #include <EEPROM.h>
+#include <HardwareSerial.h>
+#include <Arduino.h>
 
 
 #ifndef TRUE
@@ -81,13 +82,13 @@ MessageValidation _messageValidator;
 
 char _commandTemp[RADIO_MSG_MAX_SIZE];
 
-byte second;
-byte minute;
-byte hour;
-byte dayOfWeek;
-byte day;
-byte month;
-byte year;
+uint8_t second;
+uint8_t minute;
+uint8_t hour;
+uint8_t dayOfWeek;
+uint8_t day;
+uint8_t month;
+uint8_t year;
 
 char _gpsDate[12];
 char _gpsTimestamp[12];
@@ -193,23 +194,23 @@ void watchdog_reset() {
 
 
 // Convert binary coded decimal to normal decimal numbers
-byte bcdToDec(byte val)
+uint8_t bcdToDec(uint8_t val)
 {
     return ((val / 16 * 10) + (val % 16));
 }
 
 // Convert normal decimal numbers to binary coded decimal
-byte decToBcd(byte val)
+uint8_t decToBcd(uint8_t val)
 {
     return ((val / 10 * 16) + (val % 10));
 }
 
 
-void setDateTime(byte year, byte month, byte day, byte hour, byte minute, byte second)
+void setDateTime(uint8_t year, uint8_t month, uint8_t day, uint8_t hour, uint8_t minute, uint8_t second)
 {
-    byte dayOfWeek = (byte) 0;
+    uint8_t dayOfWeek = (uint8_t) 0;
     Wire.beginTransmission(CLOCK_ADDRESS);
-    Wire.write(byte(0x00));
+    Wire.write(uint8_t(0x00));
     Wire.write(decToBcd(second));  // 0 to bit 7 starts the clock
     Wire.write(decToBcd(minute));
     Wire.write(decToBcd(hour));    // If you want 12 hour am/pm you need to set
@@ -223,7 +224,7 @@ void setDateTime(byte year, byte month, byte day, byte hour, byte minute, byte s
 
 void getDateTime() {
     Wire.beginTransmission(CLOCK_ADDRESS);
-    Wire.write(byte(0x00));
+    Wire.write(uint8_t(0x00));
     Wire.endTransmission();
 
     Wire.requestFrom(CLOCK_ADDRESS, 7);

@@ -140,6 +140,12 @@ int build_rows(int wordCount) {
     int rowLetterCount = 0;
     int wordLen;
     int i;
+       
+    // Clear the rows
+    for (i = 0; i < ROW_COUNT; i++) {
+        rows[i][0] = '\0';
+	    memset((void*)&rows[i][0], 0, DATA_ARRAY_STR_LEN);
+    }
 
     for (i = 0; i < wordCount; i++) {
         wordLen = strlen(words[i]);
@@ -178,7 +184,15 @@ void draw_rows() {
     {
         for (i = 0; i < _output_row_count; i++)
         {
-        
+            int rowLen = strlen(rows[i]);
+            
+            for (int j = rowLen; j < DATA_ARRAY_STR_LEN - 1; j++)
+            {
+                rows[i][j] = ' ';
+            }
+            
+            rows[i][DATA_ARRAY_STR_LEN - 1] = '\0';
+            
             printf("%s\n", rows[i]);
         
             fprintf(fd, "%s\n", rows[i]);
@@ -203,10 +217,10 @@ int strsplit(const char* str, const char* delim, char dataArray[][DATA_ARRAY_STR
     // as this is less efficient)
     char *s = strdup(str);
 
-    // these three variables are part of a very common idiom to
-    // implement a dynamically-growing array
-    size_t tokens_alloc = 1;
-    size_t tokens_used = 0;
+        // these three variables are part of a very common idiom to
+        // implement a dynamically-growing array
+    u_int32_t tokens_alloc = 1;
+    u_int32_t tokens_used = 0;
     
     char **tokens = (char**) calloc(tokens_alloc, sizeof(char*));
 
@@ -222,7 +236,7 @@ int strsplit(const char* str, const char* delim, char dataArray[][DATA_ARRAY_STR
         tokens[tokens_used++] = strdup(token);
     }
 
-    // cleanup
+        // cleanup
     if (tokens_used == 0) {
         free(tokens);
         tokens = NULL;
@@ -234,9 +248,9 @@ int strsplit(const char* str, const char* delim, char dataArray[][DATA_ARRAY_STR
     
     free(s);
     
-    for (size_t i = 0; i < tokens_used; i++) 
+    for (u_int32_t i = 0; i < tokens_used; i++) 
     {
-        strcpy(words[i], tokens[i]);
+        strcpy(dataArray[i], tokens[i]);
         
         printf("    token: \"%s\"\n", tokens[i]);
         free(tokens[i]);
@@ -274,6 +288,8 @@ void format_text_for_display(char* stringToDisplay) {
 int main(int argc, char *argv[])
 {
     int received0;
+    
+    printf("Pegasus2EpaperDisplay Running...\n");
     
     write_to_log("APP", "Starting Application...\n");
 

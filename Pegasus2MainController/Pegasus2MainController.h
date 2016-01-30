@@ -78,6 +78,7 @@
 #define PROC1_COMMAND_POSITION_CAMERA_OUT     3
 #define PROC1_COMMAND_POSITION_CAMERA_UP      4
 #define PROC1_COMMAND_RESET_DATA              5
+#define PROC1_COMMAND_RESET_SERVOS            9
 
 #define PROC3_COMMAND_LEDS_ON                 1
 #define PROC3_COMMAND_LEDS_OFF                2
@@ -114,6 +115,13 @@
 #define FALL_LIMIT_SPEED                (-12.5)   // Speed the balloon must achieve to indicate a fall
 #define DEFAULT_PARACHUTE_DECENT_RATE       5.0
 #define DEFAULT_ASCENT_RATE					5.0
+
+// Assuming start altitude of 175 meters
+// Other ascent rate info:
+//#define DEFAULT_ASCENT_RATE					50.0  // 304 Steps - 5.06 min
+//#define DEFAULT_ASCENT_RATE					100.0  // 152 Steps - 2.5 min
+//#define DEFAULT_ASCENT_RATE					200.0  // 76 Steps - 1.26 min
+
 
 #define MPH_PER_KNOT          1.150779448023543
 #define KPH_PER_KNOT                      1.852

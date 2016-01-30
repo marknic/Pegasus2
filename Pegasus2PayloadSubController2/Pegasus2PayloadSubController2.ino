@@ -1,7 +1,7 @@
 #include "Timer.h"
 #include <SPI.h>
 #include <Wire.h>
-#include <Adafruit_Sensor.h>
+#include <Adafruit_Sensor/Adafruit_Sensor.h>
 #include <Adafruit_LSM9DS0.h>
 #include <SparkFunHTU21D.h>
 #include <SparkFun_MS5803_I2C.h>
@@ -27,7 +27,7 @@
 #define ADC_COUNT                      1024.0
 #define VOLTAGE_RATIO       (REFERENCE_VOLTAGE / ADC_COUNT)
 
-#define THERMOCOUPLE_VARIABILITY  10.0
+#define THERMOCOUPLE_VARIABILITY  15.0
 
 void sendSensorSamples();
 void configureSensors(void);

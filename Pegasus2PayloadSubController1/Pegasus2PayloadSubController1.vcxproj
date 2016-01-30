@@ -44,7 +44,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>C:\Program Files (x86)\Arduino\hardware\arduino\avr\cores\arduino;C:\Program Files (x86)\Arduino\hardware\arduino\avr\variants\micro;C:\_git\Pegasus2\Pegasus2PayloadSubController1;C:\ProjectCode\Sketches\libraries\Servo\src;C:\ProjectCode\Sketches\libraries\Servo\src\utility;C:\ProjectCode\Sketches\libraries\Thermister;C:\ProjectCode\Sketches\libraries\Thermister\utility;C:\ProjectCode\Sketches\libraries\Timer;C:\ProjectCode\Sketches\libraries\Timer\utility;C:\ProjectCode\Sketches\libraries\Wire;C:\ProjectCode\Sketches\libraries\Wire\utility;C:\Program Files (x86)\Arduino\libraries;C:\Program Files (x86)\Arduino\hardware\arduino\avr\libraries;C:\Program Files (x86)\Microsoft Visual Studio 14.0\Common7\IDE\Extensions\h330o0ju.bdp\Micro Platforms\default\debuggers;C:\ProjectCode\Sketches\libraries;C:\Program Files (x86)\Arduino\hardware\tools\avr/avr/include/;C:\Program Files (x86)\Arduino\hardware\tools\avr//avr/include/avr/;C:\Program Files (x86)\Arduino\hardware\tools\avr/lib\gcc\avr\4.8.1\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Program Files (x86)\Arduino\hardware\arduino\avr\cores\arduino;C:\Program Files (x86)\Arduino\hardware\arduino\avr\variants\micro;C:\_git\Pegasus2\Pegasus2PayloadSubController1;C:\ProjectCode\Sketches\libraries\SoftwareSerial;C:\ProjectCode\Sketches\libraries\SoftwareSerial\utility;C:\ProjectCode\Sketches\libraries\Thermister;C:\ProjectCode\Sketches\libraries\Thermister\utility;C:\ProjectCode\Sketches\libraries\Timer;C:\ProjectCode\Sketches\libraries\Timer\utility;C:\ProjectCode\Sketches\libraries\Wire;C:\ProjectCode\Sketches\libraries\Wire\utility;C:\Program Files (x86)\Arduino\libraries;C:\Program Files (x86)\Arduino\hardware\arduino\avr\libraries;C:\Program Files (x86)\Microsoft Visual Studio 14.0\Common7\IDE\Extensions\h330o0ju.bdp\Micro Platforms\default\debuggers;C:\ProjectCode\Sketches\libraries;C:\Program Files (x86)\Arduino\hardware\tools\avr/avr/include/;C:\Program Files (x86)\Arduino\hardware\tools\avr//avr/include/avr/;C:\Program Files (x86)\Arduino\hardware\tools\avr/lib\gcc\avr\4.8.1\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <ForcedIncludeFiles>C:\_git\Pegasus2\Pegasus2PayloadSubController1\__vm\.Pegasus2PayloadSubController1.vsarduino.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <IgnoreStandardIncludePath>false</IgnoreStandardIncludePath>
       <PreprocessorDefinitions>__AVR_ATmega32u4__;__AVR_ATmega32U4__;_VMDEBUG=1;F_CPU=16000000L;ARDUINO=10605;ARDUINO_AVR_MICRO;ARDUINO_ARCH_AVR;USB_VID=0x2341;USB_PID=0x8037;__cplusplus=201103L;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -73,7 +73,12 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="QueueArray.h" />
+    <ClInclude Include="RunningAverage.h" />
     <ClInclude Include="__vm\.Pegasus2PayloadSubController1.vsarduino.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="RunningAverage.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

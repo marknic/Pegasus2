@@ -705,7 +705,7 @@ int strsplit(const char* str, const char* delim, char dataArray[][DATA_ARRAY_STR
     
     for (size_t i = 0; i < tokens_used; i++) 
     {
-//		strcpy(words[i], tokens[i]);
+        strcpy(dataArray[i], tokens[i]);
         
         printf("    token: \"%s\"\n", tokens[i]);
         free(tokens[i]);
@@ -720,52 +720,52 @@ int strsplit(const char* str, const char* delim, char dataArray[][DATA_ARRAY_STR
 }
 
 
-/**
-* \fn splitDataIntoArray
-* \brief Splits a character into a array based on a comma delimiter
-* \return Number of data components in the resulting array
-*/
-int splitDataIntoArray(char *dataIn, char dataArray [][DATA_ARRAY_STR_LEN], int arraySize) {
-
-    int pos = -1;
-    int currentPos = 0;
-    //char tmp[256];
-
-    //strcpy(tmp, dataIn);
-
-    for (int i = 0; i < arraySize; i++) {
-        pos = findChar(dataIn, ',', currentPos);
-
-        if (pos > 0) {
-            dataIn[pos] = 0;
-
-            int len = strlen(&dataIn[currentPos]);
-
-            if (len > 0) {
-                strcpy(dataArray[i], trim(&dataIn[currentPos]));
-            }
-            else {
-                dataArray[i][0] = 0;
-            }
-
-            currentPos = pos + 1;
-        }
-
-        if (pos == -1) {
-
-            int len = strlen(&dataIn[currentPos]);
-
-            if (len > 0) {
-                strcpy(dataArray[i], trim(&dataIn[currentPos]));
-            }
-
-            return(i + 1);
-            break;
-        }
-    }
-
-    return arraySize + 1;
-}
+///**
+//* \fn splitDataIntoArray
+//* \brief Splits a character into a array based on a comma delimiter
+//* \return Number of data components in the resulting array
+//*/
+//int splitDataIntoArray(char *dataIn, char dataArray [][DATA_ARRAY_STR_LEN], int arraySize) {
+//
+    //int pos = -1;
+    //int currentPos = 0;
+    ////char tmp[256];
+//
+    ////strcpy(tmp, dataIn);
+//
+    //for (int i = 0; i < arraySize; i++) {
+        //pos = findChar(dataIn, ',', currentPos);
+//
+        //if (pos > 0) {
+            //dataIn[pos] = 0;
+//
+            //int len = strlen(&dataIn[currentPos]);
+//
+            //if (len > 0) {
+                //strcpy(dataArray[i], trim(&dataIn[currentPos]));
+            //}
+            //else {
+                //dataArray[i][0] = 0;
+            //}
+//
+            //currentPos = pos + 1;
+        //}
+//
+        //if (pos == -1) {
+//
+            //int len = strlen(&dataIn[currentPos]);
+//
+            //if (len > 0) {
+                //strcpy(dataArray[i], trim(&dataIn[currentPos]));
+            //}
+//
+            //return(i + 1);
+            //break;
+        //}
+    //}
+//
+    //return arraySize + 1;
+//}
 
 /*
 
@@ -797,7 +797,8 @@ void process_proc2_data(char* dataLine) {
     
     strcpy(dataToLog, dataLine);
     
-    int splitCount = splitDataIntoArray(dataLine, _proc2_dataArray, PROC2_DATA_COUNT);
+    int splitCount = strsplit(dataLine, ",", _proc2_dataArray);
+    //int splitCount = splitDataIntoArray(dataLine, _proc2_dataArray, PROC2_DATA_COUNT);
 
     if (splitCount == PROC2_DATA_COUNT) {
 
@@ -953,7 +954,8 @@ void get_m1_data() {
 
     get_subproc1_sensor_data();
 
-    int splitCount = splitDataIntoArray(_proc1SensorBuffer, _proc1_dataArray, PROC2_DATA_COUNT);
+    //int splitCount = splitDataIntoArray(_proc1SensorBuffer, _proc1_dataArray, PROC2_DATA_COUNT);
+    int splitCount = strsplit(_proc1SensorBuffer, ",", _proc1_dataArray);
 }
 
 
@@ -1508,7 +1510,10 @@ int release_balloon_time(int minutesTillRelease) {
 int deploy_parachute_now() {
 
     _subProc1.send_command(PROC1_COMMAND_DEPLOY_PARACHUTE);
-
+    usleep(100000);
+    _subProc1.send_command(PROC1_COMMAND_DEPLOY_PARACHUTE);
+    usleep(100000);
+    
     printf("Deploying Parachute NOW!\n");
 
     send_craft_message(PARACHUTE_DEPLOYED_POS, MESSAGE_NO_VALUE);
@@ -1575,7 +1580,10 @@ int rotate_video_camera(char position) {
         _videoCameraUp = TRUE;
 
         _subProc1.send_command(PROC1_COMMAND_POSITION_CAMERA_UP);
-
+        usleep(100000);
+        _subProc1.send_command(PROC1_COMMAND_POSITION_CAMERA_UP);
+        usleep(100000);
+        
         printf("Positioning Video Camera Up!\n");
 
         sprintf(_tmp_log_data, "Positioning Video Camera Up!: %d", counter);
@@ -1590,7 +1598,10 @@ int rotate_video_camera(char position) {
     printf("Positioning Video Camera Down!\n");
 
     _subProc1.send_command(PROC1_COMMAND_POSITION_CAMERA_OUT);
-
+    usleep(100000);
+    _subProc1.send_command(PROC1_COMMAND_POSITION_CAMERA_OUT);
+    usleep(100000);
+      
     sprintf(_tmp_log_data, "Positioning Video Camera Down!: %d", counter);
 
     write_to_log("VID", _tmp_log_data);
@@ -1607,8 +1618,22 @@ int rotate_video_camera(char position) {
 * \return COMMAND_SUCCESS
 */
 int display_user_message(char* msg) {
-
+    
+    if (msg == NULL) return -1;
+    
+    int msgLen = strlen(msg);
+    
+    if (msgLen == 0) return -1;
+    
     _pictureCount++;
+    
+    for (int i = 0; i < msgLen; i++)
+    {
+        if ((msg[i] == '\n') || (msg[i] == '\r'))
+        {
+            msg[i] = '\0';
+        }
+    }	
 
     printf("User message to display: %s\n", msg);
     
@@ -2018,6 +2043,20 @@ int main(int argc, char *argv [])
 
     //rotate_video_camera('U');
     
+    _subProc1.send_command(PROC1_COMMAND_RESET_SERVOS);
+    
+    
+    display_user_message("Hello, I am testing you.  Please work!");
+    
+    _subProc3.send_command(3);
+	_subProc3.send_command(4);
+	_subProc3.send_command(5);
+	_subProc3.send_command(6);
+	_subProc3.send_command(7);
+	_subProc3.send_command(8);
+	_subProc3.send_command(9);
+	
+    
     deploy_parachute_now();
     
     release_balloon_now();
@@ -2025,13 +2064,16 @@ int main(int argc, char *argv [])
     rotate_video_camera('U');
     
     
+    _subProc1.send_command(PROC1_COMMAND_RESET_SERVOS);
     
     
     
     deploy_parachute_now();
     
     release_balloon_now();
-    
+
+    _subProc1.send_command(PROC1_COMMAND_RESET_SERVOS);
+
 #if (TEST_TELEMETRY)
 
     // Load Altitude table for testing - Contains data to simulate falling. 
@@ -2068,7 +2110,8 @@ int main(int argc, char *argv [])
 
             if (line) {
 
-                int count = splitDataIntoArray(line, _tmp_telemetry_value_list, 6);
+                //int count = splitDataIntoArray(line, _tmp_telemetry_value_list, 6);
+                int count = strsplit(line, ",", _tmp_telemetry_value_list);
 
                 if (count == 6) {
 

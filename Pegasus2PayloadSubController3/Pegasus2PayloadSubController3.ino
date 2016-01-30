@@ -6,25 +6,17 @@
 #include <avr/wdt.h>
 #include <SoftwareSerial.h>
 
-// pin definition for the Uno
-//#define CS_PIN                                                  10
-//#define DC_PIN                                                   9
-//#define RST_PIN                                                  8
 
-//#define DATA_ARRAY_STR_LEN                                      16
+// pin definition for the Uno
 #define USER_MSG_MAX_LEN                                        80
 #define USER_MSG_ADJUSTED_MAX_LEN          (USER_MSG_MAX_LEN + 20)
-//#define ROW_COUNT                                                6
-//#define ROW_LENGTH                                              13
-//#define MAX_WORD_COUNT                                          20
-//#define PIXEL_OFFSET                                            20
 
 #define I2C_ADDRESS                                           0x06
 
 #define NEOPIXEL_PIN                                             6
 
 // How many NeoPixels are attached to the Arduino?
-#define NUMPIXELS                                               26
+#define NUMPIXELS                                               25
 
 #ifndef TRUE
 #define TRUE                                                     1
@@ -93,11 +85,18 @@ void display_text(char* text_to_display)
     if (text_to_display == NULL) return;
 
     Serial1.println(text_to_display);
+
+    Serial.print("Sending Text: '");
+    Serial.print(text_to_display);
+    Serial.println("'");
 }
 
 
 // callback for received data
 void receiveData(int byteCount) {
+
+    Serial.print("byteCount: ");
+    Serial.println(byteCount);
 
     if (byteCount == 1) {
         int command = Wire.read();
@@ -142,7 +141,7 @@ void receiveData(int byteCount) {
                 display_text(_going_down);
                 break;            
             case 9:         // Display Going Up
-                Serial.println("Display 8");
+                Serial.println("Display 9");
                 display_text(_going_up);
                 break;
             default:
@@ -157,24 +156,33 @@ void receiveData(int byteCount) {
     else {
 
         int byteCountToRead = byteCount;
-        
+
         if (_display_text[0] == '\0') {
             displayTextLength = (uint8_t) Wire.read();
 
+            Serial.print("message length: "); Serial.println(displayTextLength);
             byteCountToRead--;
         }
 
+        Serial.print("userTextBytesRead: "); Serial.println(userTextBytesRead);
         size_t size = Wire.readBytes(&_display_text[userTextBytesRead], byteCountToRead);
+
+        Serial.print("size: "); Serial.println(size);
 
         userTextBytesRead += size;
 
+        Serial.print("userTextBytesRead: "); Serial.println(userTextBytesRead);
+        
         if (displayTextLength == userTextBytesRead) {
 
             _display_text[userTextBytesRead] = '\0';
 
+            Serial.print("Received for display: ");
+            Serial.println(_display_text);
+
             display_text(_display_text);
 
-            _display_text[0] == '\0';
+            _display_text[0] = '\0';
             userTextBytesRead = 0;
             displayTextLength = 0;
         }
@@ -284,7 +292,7 @@ void setup()
 
     Serial.println("Startup Text...");
     
-    _timer.after(20000, display_startup_text);
+    _timer.after(10000, display_startup_text);
 }
 
 
