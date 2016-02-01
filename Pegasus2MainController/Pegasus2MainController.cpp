@@ -110,8 +110,6 @@ double _smoothingAverage = 0;                           // the average
 
 bool _videoCameraUp = FALSE;
 
-double _pressure_offset = 0.0;
-
 uint8_t messagesDisplayed[5] = { 0, 0, 0, 0, 0 };
 
 uint8_t _craft_notes_flags[CRAFT_NOTE_COUNT] = { 
@@ -226,8 +224,7 @@ char* line;
 FILE* _altitude_data_fp;
 
 int _testStepCounter = 0;
-int _delayCounter = 0;
-int _testDelayTargetCount = 0;
+int _testRiseCount;
 
 int get_altitude_index(double altitude);
 void TestStep();
@@ -319,6 +316,7 @@ void evaluate_data() {
 
             if (altDif > 20.0) {
                 send_craft_message(LIFTOFF_POS, MESSAGE_NO_VALUE);
+                _subProc3.send_command(PROC3_COMMAND_GOING_UP);
             }
         }
 
@@ -332,10 +330,12 @@ void evaluate_data() {
 
         if ((_craft_notes_flags[ABOVE_TRAFFIC_POS] == CRAFT_MESSAGE_NOT_SENT) && (_current_altitude > ALTITUDE_ABOVE_TRAFFIC)) {
             send_craft_message(ABOVE_TRAFFIC_POS, MESSAGE_NO_VALUE);
+            _subProc3.send_command(PROC3_COMMAND_ABOVE_TRAFFIC);
         }
 
         if ((_craft_notes_flags[STRATOSPHERE_POS] == CRAFT_MESSAGE_NOT_SENT) && (_current_altitude > ALTITUDE_STRATOSPHERE)) {
             send_craft_message(STRATOSPHERE_POS, MESSAGE_NO_VALUE);
+            _subProc3.send_command(PROC3_COMMAND_STRATOSPHERE);
         }
 
         if ((_craft_notes_flags[SEE_MY_HOUSE_POS] == CRAFT_MESSAGE_NOT_SENT) && (_current_altitude > ALTITUDE_I_CAN_SEE)) {
@@ -346,33 +346,34 @@ void evaluate_data() {
             send_craft_message(CURVATURE_POS, MESSAGE_NO_VALUE);
         }
 
-        if ((_craft_notes_flags[GOAL_ALTITUDE_POS] == CRAFT_MESSAGE_NOT_SENT) && (_current_altitude > ALTITUDE_GOAL)) {
+        if ((_craft_notes_flags[GOAL_ALTITUDE_POS] == CRAFT_MESSAGE_NOT_SENT) && (_current_altitude >= ALTITUDE_GOAL)) {
             send_craft_message(GOAL_ALTITUDE_POS, MESSAGE_NO_VALUE);
+            _subProc3.send_command(PROC3_COMMAND_REACHED_GOAL);
         }
 
         if ((messagesDisplayed[0] == 0) && (_current_altitude > 20000)) {
             debug_print("evaluate_data: altitude above 20000 sending cmd 3");
             messagesDisplayed[0] = 1;
-            _subProc3.send_command(3);
+            _subProc3.send_command(PROC3_COMMAND_THANK_MSR);
         }
 
         if ((messagesDisplayed[1] == 0) && (_current_altitude > 22000)) {
             debug_print("evaluate_data: altitude above 22000 sending cmd 4");
             messagesDisplayed[1] = 1;
-            _subProc3.send_command(4);
+            _subProc3.send_command(PROC3_COMMAND_EARTH_PEOPLE);
         }
 
         if ((messagesDisplayed[2] == 0) && (_current_altitude > 24000)) {
             debug_print("evaluate_data: altitude above 24000 sending cmd 5");
             messagesDisplayed[2] = 1;
-            _subProc3.send_command(5);
+            _subProc3.send_command(PROC3_COMMAND_FLIGHT_LEADS);
         }
 
         if ((messagesDisplayed[3] == 0) && (_current_altitude > 26000)) {
             debug_print("evaluate_data: altitude above 26000 sending cmd 6");
 
             messagesDisplayed[3] = 1;
-            _subProc3.send_command(6);
+            _subProc3.send_command(PROC3_COMMAND_HIMON);
         }
 
         //if ((messagesDisplayed[4] == 0) && (_current_altitude > 28000)) {
@@ -707,7 +708,7 @@ int strsplit(const char* str, const char* delim, char dataArray[][DATA_ARRAY_STR
     {
         strcpy(dataArray[i], tokens[i]);
         
-        printf("    token: \"%s\"\n", tokens[i]);
+        //printf("    token: \"%s\"\n", tokens[i]);
         free(tokens[i]);
     }
     
@@ -967,25 +968,25 @@ void switch_leds(bool onOff) {
     _ledsOnOff = onOff;
 
     if (onOff) {
-        _subProc3.send_command(1);
+        _subProc3.send_command(PROC3_COMMAND_LEDS_ON);
 
         send_craft_message(LIGHTS_ON_POS, MESSAGE_NO_VALUE);
     }
     else {
-        _subProc3.send_command(2);
+        _subProc3.send_command(PROC3_COMMAND_LEDS_OFF);
 
         send_craft_message(LIGHTS_OFF_POS, MESSAGE_NO_VALUE);
     }
 }
 
 
-double myfabs(double value)
-{
-    if (value < 0.0) return (value * -1.0);
-
-    return value;
-}
-
+//double myfabs(double value)
+//{
+    //if (value < 0.0) return (value * -1.0);
+//
+    //return value;
+//}
+//
 /**
 * \fn calculate_vertical_speed
 * \brief Calculate vertical speed (ascending:+ or descending:-) 
@@ -1003,22 +1004,24 @@ double calculate_vertical_speed(double altitude, double seconds) {
 
     double mps = (altitude - previousAltitude) / seconds;
     
-    double abs_mps = myfabs(mps);
+    //double abs_mps = myfabs(mps);
 
     //printf("VS: alt: %.1f  prev: %.1f  sec: %.1f  mps: %.1f\n", altitude, previousAltitude, seconds, abs_mps);
 
     previousAltitude = altitude;
 
     if (_warmupPeriodOver) {
-        if ((_craft_notes_flags[DIVING_POS] == 0) && (abs_mps >= 89.4)) {
+	    if ((_craft_notes_flags[DIVING_POS] == 0) && (mps <= -89.4)) {
             send_craft_message(DIVING_POS, MESSAGE_NO_VALUE);
         }
         else {
-            if ((_craft_notes_flags[PLUMMETING_POS] == 0) && (abs_mps >= 111.8)) {
+	        if ((_craft_notes_flags[PLUMMETING_POS] == 0) && (mps <= -111.8)) {
+                _subProc3.send_command(PROC3_COMMAND_SPEED_200);
                 send_craft_message(PLUMMETING_POS, MESSAGE_NO_VALUE);
             }
             else {
-                if ((_craft_notes_flags[SCREAMING_POS] == 0) && (abs_mps >= 134.1)) {
+	            if ((_craft_notes_flags[SCREAMING_POS] == 0) && (mps <= -134.1)) {
+                    _subProc3.send_command(PROC3_COMMAND_SPEED_300);
                     send_craft_message(SCREAMING_POS, MESSAGE_NO_VALUE);
                 }
 
@@ -1076,7 +1079,7 @@ void send_telemetry() {
             break;
         
         case BALLOON_RISING:
-            _current_altitude += (DEFAULT_ASCENT_RATE * 2);
+        _current_altitude += ((DEFAULT_ASCENT_RATE * 2) * TEST_ASCENT_RATE_MULTIPLIER );
 
             _balloon_current_position.lat += _balloon_change_lat;
             _balloon_current_position.lon += _balloon_change_lon;
@@ -1145,7 +1148,7 @@ void send_telemetry() {
 #else
 
     if (pressure > 0.0) {
-        _current_altitude = _altitude_calculation.CalculateAltitude(pressure + _pressure_offset);
+        _current_altitude = _altitude_calculation.CalculateAltitude(pressure);
     }
     else {
 
@@ -1430,6 +1433,8 @@ int send_craft_message(int index, int value) {
 */
 int release_balloon_now() {
 
+    static bool proc3SendMsg = TRUE;
+    
     _subProc1.send_command(PROC1_COMMAND_RELEASE_BALLOON);
 
     _balloon_released = TRUE;
@@ -1437,7 +1442,13 @@ int release_balloon_now() {
     printf("Releasing Balloon NOW!\n");
 
     send_craft_message(BALLOON_RELEASED_POS, MESSAGE_NO_VALUE);
-
+    
+    if (proc3SendMsg)
+    {
+        _subProc3.send_command(PROC3_COMMAND_GOING_DOWN);
+        proc3SendMsg = FALSE;
+    }
+    
 #if (TEST_TELEMETRY)
     
     if (_balloon_state == BALLOON_RISING) {
@@ -1853,94 +1864,99 @@ void load_altitude_table() {
 
 void TestStep()
 {
-    int i;
-
-    _delayCounter++;
-    
-    if (_delayCounter < _testDelayTargetCount) return;
-
-    _delayCounter = 0;
-    
     _testStepCounter++;
     
 
-    if (_testStepCounter < 12)
+    if (_testStepCounter < TEST_STEP_PREP_DELAY_COUNT)
     {
         printf("In Prep...\n");
 
         return;
     }
     
-    if (_testStepCounter == 12)
+    if (_testStepCounter == TEST_STEP_PREP_DELAY_COUNT)
     {
         _warmupPeriodOver = TRUE;
         
-        _testDelayTargetCount = 0;
+        //int targetAltitude = TEST_TARGET_ALTITUDE_METERS;
+
+        int totalRise = TEST_TARGET_ALTITUDE_METERS - _balloon_starting_position.alt;
+        int remainder = totalRise % (int)(DEFAULT_ASCENT_RATE * TEST_ASCENT_RATE_MULTIPLIER * 2);
+
+        _testRiseCount = totalRise / (DEFAULT_ASCENT_RATE * TEST_ASCENT_RATE_MULTIPLIER * 2);
+
+        if (remainder)
+        {
+            _testRiseCount++;
+        }
+        
+        _balloon_change_lat = (_balloon_starting_position.lat - _balloon_ending_position.lat) / (_testRiseCount + 500);
+        _balloon_change_lon = (_balloon_starting_position.lon - _balloon_ending_position.lon) / (_testRiseCount + 500);
+        
+        _testRiseCount += TEST_STEP_PREP_DELAY_COUNT + 2;
         
         return;
     }
     
-    //if (_testStepCounter < 3043)
-    //{
-        //return;
-    //}
+    if (_testStepCounter < _testRiseCount)  //3043)
+    {
+        return;
+    }
     
-    if (_testStepCounter == 3043)
+    if (_testStepCounter == _testRiseCount)  //3043)
     {
         release_balloon_now();
-        
+
         return;
     }
     
 
-    //if (_testStepCounter < 3143)
-    //{
-        //return;
-    //}
+    if (_testStepCounter < _testRiseCount + 100)
+    {
+        return;
+    }
     
-    if (_testStepCounter == 3143)
+    if (_testStepCounter == _testRiseCount + 100)
     {
         return;
     }
 
-    //if (_testStepCounter < 3243)
-    //{
-        //return;
-    //}
+    if (_testStepCounter < _testRiseCount + 200)
+    {
+        return;
+    }
     
-    if (_testStepCounter == 3243)
+    if (_testStepCounter == _testRiseCount + 200)
     {
         return;
     }
 
-    //if (_testStepCounter < 3343)
-    //{
-        //return;
-    //}
-    
-    if (_testStepCounter == 3343)
+    if (_testStepCounter < _testRiseCount + 300)
     {
-        deploy_parachute_now();
-        
         return;
     }
-
-    //if (_testStepCounter < 3443)
-    //{
-        //return;
-    //}
     
-    if (_testStepCounter == 3443)
+    if (_testStepCounter == _testRiseCount + 300)
     {
         return;
     }
 
-    //if (_testStepCounter < 3543)
-    //{
-        //return;
-    //}
+    if (_testStepCounter < _testRiseCount + 400)
+    {
+        return;
+    }
     
-    if (_testStepCounter == 3543)
+    if (_testStepCounter == _testRiseCount + 400)
+    {
+        return;
+    }
+
+    if (_testStepCounter < _testRiseCount + 500)
+    {
+        return;
+    }
+    
+    if (_testStepCounter == _testRiseCount + 500)
     {
         return;
     }
@@ -2023,13 +2039,11 @@ int test_uart_streams(char uartNumber)
 int main(int argc, char *argv [])
 {
     initialize_log(TELEMETRY_LOG_FILE);
-        
+   
     initialize_serial_devices();
     
     wiring_pi_setup();
     
-    //_pressure_offset = -10.0;
-
     _initial_time = time(NULL);
 
     _pictureCount = 0;
@@ -2040,39 +2054,42 @@ int main(int argc, char *argv [])
         0.0, 0.0, 0.0, 0.0, 0.0, 0, 0);
 
     switch_leds(FALSE);
-
+	
+	display_user_message("Testing...");
+    
+	_subProc1.send_command(PROC3_COMMAND_RESET);
     //rotate_video_camera('U');
     
     _subProc1.send_command(PROC1_COMMAND_RESET_SERVOS);
     
     
-    display_user_message("Hello, I am testing you.  Please work!");
-    
-    _subProc3.send_command(3);
-	_subProc3.send_command(4);
-	_subProc3.send_command(5);
-	_subProc3.send_command(6);
-	_subProc3.send_command(7);
-	_subProc3.send_command(8);
-	_subProc3.send_command(9);
-	
-    
-    deploy_parachute_now();
-    
-    release_balloon_now();
-    
-    rotate_video_camera('U');
-    
-    
-    _subProc1.send_command(PROC1_COMMAND_RESET_SERVOS);
-    
-    
-    
-    deploy_parachute_now();
-    
-    release_balloon_now();
-
-    _subProc1.send_command(PROC1_COMMAND_RESET_SERVOS);
+    //display_user_message("Hello, I am testing you.  Please work!");
+    //
+    //_subProc3.send_command(3);
+    //_subProc3.send_command(4);
+    //_subProc3.send_command(5);
+    //_subProc3.send_command(6);
+    //_subProc3.send_command(7);
+    //_subProc3.send_command(8);
+    //_subProc3.send_command(9);
+    //
+    //
+    //deploy_parachute_now();
+    //
+    //release_balloon_now();
+    //
+    //rotate_video_camera('U');
+    //
+    //
+    //_subProc1.send_command(PROC1_COMMAND_RESET_SERVOS);
+    //
+    //
+    //
+    //deploy_parachute_now();
+    //
+    //release_balloon_now();
+//
+    //_subProc1.send_command(PROC1_COMMAND_RESET_SERVOS);
 
 #if (TEST_TELEMETRY)
 
@@ -2133,8 +2150,8 @@ int main(int argc, char *argv [])
 
                     _current_altitude = _balloon_current_position.alt;
 
-                    _balloon_change_lat = (_balloon_starting_position.lat - _balloon_ending_position.lat) / 3000;
-                    _balloon_change_lon = (_balloon_starting_position.lon - _balloon_ending_position.lon) / 3000;
+                    //_balloon_change_lat = (_balloon_starting_position.lat - _balloon_ending_position.lat) / 3000;
+                    //_balloon_change_lon = (_balloon_starting_position.lon - _balloon_ending_position.lon) / 3000;
                 }
 
                 free(line);
