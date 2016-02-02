@@ -89,4 +89,6 @@ extern "C" void __cxa_pure_virtual() {;}
 #define portModeRegister(P)
 #include <..\Pegasus2PayloadSubController1\Pegasus2PayloadSubController1.ino>
 #include <..\Pegasus2PayloadSubController1\QueueArray.h>
+#include <..\Pegasus2PayloadSubController1\RunningAverage.cpp>
+#include <..\Pegasus2PayloadSubController1\RunningAverage.h>
 #endif
