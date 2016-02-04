@@ -91,6 +91,7 @@
     <None Include="release.mak">
       <Filter>Make files</Filter>
     </None>
+    <None Include="altitude_data.csv" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Pegasus2MainController.h">

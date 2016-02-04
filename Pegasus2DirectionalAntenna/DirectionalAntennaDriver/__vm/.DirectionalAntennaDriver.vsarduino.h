@@ -17,7 +17,7 @@
 #define ARDUINO 10605
 #define ARDUINO_AVR_UNO
 #define ARDUINO_ARCH_AVR
-#define __cplusplus
+#define __cplusplus 201103L
 #define __AVR__
 #define __inline__
 #define __asm__(x)

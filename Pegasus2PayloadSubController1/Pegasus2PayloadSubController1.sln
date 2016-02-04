@@ -5,8 +5,6 @@ VisualStudioVersion = 14.0.24720.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Pegasus2PayloadSubController1", "Pegasus2PayloadSubController1.vcxproj", "{A4C05202-094E-44FF-930B-133E55080E77}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MaestroTest", "..\MaestroTest\MaestroTest.vcxproj", "{9A47C500-991E-45CF-9171-1A61132623B1}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -21,14 +19,6 @@ Global
 		{A4C05202-094E-44FF-930B-133E55080E77}.Release|Win32.ActiveCfg = Release|Win32
 		{A4C05202-094E-44FF-930B-133E55080E77}.Release|Win32.Build.0 = Release|Win32
 		{A4C05202-094E-44FF-930B-133E55080E77}.Release|x64.ActiveCfg = Release|Win32
-		{9A47C500-991E-45CF-9171-1A61132623B1}.Debug|Win32.ActiveCfg = Debug|Win32
-		{9A47C500-991E-45CF-9171-1A61132623B1}.Debug|Win32.Build.0 = Debug|Win32
-		{9A47C500-991E-45CF-9171-1A61132623B1}.Debug|x64.ActiveCfg = Debug|x64
-		{9A47C500-991E-45CF-9171-1A61132623B1}.Debug|x64.Build.0 = Debug|x64
-		{9A47C500-991E-45CF-9171-1A61132623B1}.Release|Win32.ActiveCfg = Release|Win32
-		{9A47C500-991E-45CF-9171-1A61132623B1}.Release|Win32.Build.0 = Release|Win32
-		{9A47C500-991E-45CF-9171-1A61132623B1}.Release|x64.ActiveCfg = Release|x64
-		{9A47C500-991E-45CF-9171-1A61132623B1}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

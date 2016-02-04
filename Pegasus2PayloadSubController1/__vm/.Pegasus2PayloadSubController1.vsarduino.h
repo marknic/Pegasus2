@@ -19,7 +19,7 @@
 #define ARDUINO_ARCH_AVR
 #define USB_VID 0x2341
 #define USB_PID 0x8037
-#define __cplusplus
+#define __cplusplus 201103L
 #define __AVR__
 #define __inline__
 #define __asm__(x)
@@ -88,4 +88,7 @@ extern "C" void __cxa_pure_virtual() {;}
 #define portInputRegister(P)
 #define portModeRegister(P)
 #include <..\Pegasus2PayloadSubController1\Pegasus2PayloadSubController1.ino>
+#include <..\Pegasus2PayloadSubController1\QueueArray.h>
+#include <..\Pegasus2PayloadSubController1\RunningAverage.cpp>
+#include <..\Pegasus2PayloadSubController1\RunningAverage.h>
 #endif

@@ -12,13 +12,14 @@
 #define _VSARDUINO_H_
 #define __AVR_ATmega32u4__
 #define __AVR_ATmega32U4__
+#define _VMDEBUG 1
 #define F_CPU 16000000L
 #define ARDUINO 10605
 #define ARDUINO_AVR_MICRO
 #define ARDUINO_ARCH_AVR
 #define USB_VID 0x2341
 #define USB_PID 0x8037
-#define __cplusplus
+#define __cplusplus 201103L
 #define __AVR__
 #define __inline__
 #define __asm__(x)

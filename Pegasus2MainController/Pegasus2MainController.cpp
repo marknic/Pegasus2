@@ -110,8 +110,6 @@ double _smoothingAverage = 0;                           // the average
 
 bool _videoCameraUp = FALSE;
 
-double _pressure_offset = 0.0;
-
 uint8_t messagesDisplayed[5] = { 0, 0, 0, 0, 0 };
 
 uint8_t _craft_notes_flags[CRAFT_NOTE_COUNT] = { 
@@ -157,7 +155,7 @@ time_t _current_time;
 
 bool _balloon_released = FALSE;
 
-int _craft_messages = 0;
+int _telemetry_count = 0;
 
 MessageValidation _messageValidator;
 
@@ -224,6 +222,9 @@ size_t lineLength;
 char* line;
 
 FILE* _altitude_data_fp;
+
+int _testStepCounter = 0;
+int _testRiseCount;
 
 int get_altitude_index(double altitude);
 void TestStep();
@@ -315,6 +316,7 @@ void evaluate_data() {
 
             if (altDif > 20.0) {
                 send_craft_message(LIFTOFF_POS, MESSAGE_NO_VALUE);
+                _subProc3.send_command(PROC3_COMMAND_GOING_UP);
             }
         }
 
@@ -328,10 +330,12 @@ void evaluate_data() {
 
         if ((_craft_notes_flags[ABOVE_TRAFFIC_POS] == CRAFT_MESSAGE_NOT_SENT) && (_current_altitude > ALTITUDE_ABOVE_TRAFFIC)) {
             send_craft_message(ABOVE_TRAFFIC_POS, MESSAGE_NO_VALUE);
+            _subProc3.send_command(PROC3_COMMAND_ABOVE_TRAFFIC);
         }
 
         if ((_craft_notes_flags[STRATOSPHERE_POS] == CRAFT_MESSAGE_NOT_SENT) && (_current_altitude > ALTITUDE_STRATOSPHERE)) {
             send_craft_message(STRATOSPHERE_POS, MESSAGE_NO_VALUE);
+            _subProc3.send_command(PROC3_COMMAND_STRATOSPHERE);
         }
 
         if ((_craft_notes_flags[SEE_MY_HOUSE_POS] == CRAFT_MESSAGE_NOT_SENT) && (_current_altitude > ALTITUDE_I_CAN_SEE)) {
@@ -342,33 +346,34 @@ void evaluate_data() {
             send_craft_message(CURVATURE_POS, MESSAGE_NO_VALUE);
         }
 
-        if ((_craft_notes_flags[GOAL_ALTITUDE_POS] == CRAFT_MESSAGE_NOT_SENT) && (_current_altitude > ALTITUDE_GOAL)) {
+        if ((_craft_notes_flags[GOAL_ALTITUDE_POS] == CRAFT_MESSAGE_NOT_SENT) && (_current_altitude >= ALTITUDE_GOAL)) {
             send_craft_message(GOAL_ALTITUDE_POS, MESSAGE_NO_VALUE);
+            _subProc3.send_command(PROC3_COMMAND_REACHED_GOAL);
         }
 
         if ((messagesDisplayed[0] == 0) && (_current_altitude > 20000)) {
             debug_print("evaluate_data: altitude above 20000 sending cmd 3");
             messagesDisplayed[0] = 1;
-            _subProc3.send_command(3);
+            _subProc3.send_command(PROC3_COMMAND_THANK_MSR);
         }
 
         if ((messagesDisplayed[1] == 0) && (_current_altitude > 22000)) {
             debug_print("evaluate_data: altitude above 22000 sending cmd 4");
             messagesDisplayed[1] = 1;
-            _subProc3.send_command(4);
+            _subProc3.send_command(PROC3_COMMAND_EARTH_PEOPLE);
         }
 
         if ((messagesDisplayed[2] == 0) && (_current_altitude > 24000)) {
             debug_print("evaluate_data: altitude above 24000 sending cmd 5");
             messagesDisplayed[2] = 1;
-            _subProc3.send_command(5);
+            _subProc3.send_command(PROC3_COMMAND_FLIGHT_LEADS);
         }
 
         if ((messagesDisplayed[3] == 0) && (_current_altitude > 26000)) {
             debug_print("evaluate_data: altitude above 26000 sending cmd 6");
 
             messagesDisplayed[3] = 1;
-            _subProc3.send_command(6);
+            _subProc3.send_command(PROC3_COMMAND_HIMON);
         }
 
         //if ((messagesDisplayed[4] == 0) && (_current_altitude > 28000)) {
@@ -660,52 +665,108 @@ int findChar(char *dataIn, char charToFind, int startChar) {
 
 
 
-/**
-* \fn splitDataIntoArray
-* \brief Splits a character into a array based on a comma delimiter
-* \return Number of data components in the resulting array
-*/
-int splitDataIntoArray(char *dataIn, char dataArray [][DATA_ARRAY_STR_LEN], int arraySize) {
 
-    int pos = -1;
-    int currentPos = 0;
-    //char tmp[256];
 
-    //strcpy(tmp, dataIn);
+int strsplit(const char* str, const char* delim, char dataArray[][DATA_ARRAY_STR_LEN]) {
+    // copy the original string so that we don't overwrite parts of it
+    // (don't do this if you don't need to keep the old line,
+    // as this is less efficient)
+    char *s = strdup(str);
 
-    for (int i = 0; i < arraySize; i++) {
-        pos = findChar(dataIn, ',', currentPos);
+        // these three variables are part of a very common idiom to
+        // implement a dynamically-growing array
+    size_t tokens_alloc = 1;
+    size_t tokens_used = 0;
+    
+    char **tokens = (char**) calloc(tokens_alloc, sizeof(char*));
 
-        if (pos > 0) {
-            dataIn[pos] = 0;
-
-            int len = strlen(&dataIn[currentPos]);
-
-            if (len > 0) {
-                strcpy(dataArray[i], trim(&dataIn[currentPos]));
-            }
-            else {
-                dataArray[i][0] = 0;
-            }
-
-            currentPos = pos + 1;
+    char *token, *strtok_ctx;
+    for (token = strtok_r(s, delim, &strtok_ctx); token != NULL; token = strtok_r(NULL, delim, &strtok_ctx)) 
+    {
+        // check if we need to allocate more space for tokens
+        if (tokens_used == tokens_alloc) {
+            tokens_alloc *= 2;
+            tokens = (char**) realloc(tokens, tokens_alloc * sizeof(char*));
         }
-
-        if (pos == -1) {
-
-            int len = strlen(&dataIn[currentPos]);
-
-            if (len > 0) {
-                strcpy(dataArray[i], trim(&dataIn[currentPos]));
-            }
-
-            return(i + 1);
-            break;
-        }
+        
+        tokens[tokens_used++] = strdup(token);
     }
 
-    return arraySize + 1;
+        // cleanup
+    if (tokens_used == 0) {
+        free(tokens);
+        tokens = NULL;
+    
+    }
+    else {
+        tokens = (char**) realloc(tokens, tokens_used * sizeof(char*));
+    }
+    
+    free(s);
+    
+    for (size_t i = 0; i < tokens_used; i++) 
+    {
+        strcpy(dataArray[i], tokens[i]);
+        
+        //printf("    token: \"%s\"\n", tokens[i]);
+        free(tokens[i]);
+    }
+    
+    if (tokens != NULL)
+    {
+        free(tokens);
+    }
+
+    return tokens_used;
 }
+
+
+///**
+//* \fn splitDataIntoArray
+//* \brief Splits a character into a array based on a comma delimiter
+//* \return Number of data components in the resulting array
+//*/
+//int splitDataIntoArray(char *dataIn, char dataArray [][DATA_ARRAY_STR_LEN], int arraySize) {
+//
+    //int pos = -1;
+    //int currentPos = 0;
+    ////char tmp[256];
+//
+    ////strcpy(tmp, dataIn);
+//
+    //for (int i = 0; i < arraySize; i++) {
+        //pos = findChar(dataIn, ',', currentPos);
+//
+        //if (pos > 0) {
+            //dataIn[pos] = 0;
+//
+            //int len = strlen(&dataIn[currentPos]);
+//
+            //if (len > 0) {
+                //strcpy(dataArray[i], trim(&dataIn[currentPos]));
+            //}
+            //else {
+                //dataArray[i][0] = 0;
+            //}
+//
+            //currentPos = pos + 1;
+        //}
+//
+        //if (pos == -1) {
+//
+            //int len = strlen(&dataIn[currentPos]);
+//
+            //if (len > 0) {
+                //strcpy(dataArray[i], trim(&dataIn[currentPos]));
+            //}
+//
+            //return(i + 1);
+            //break;
+        //}
+    //}
+//
+    //return arraySize + 1;
+//}
 
 /*
 
@@ -737,7 +798,8 @@ void process_proc2_data(char* dataLine) {
     
     strcpy(dataToLog, dataLine);
     
-    int splitCount = splitDataIntoArray(dataLine, _proc2_dataArray, PROC2_DATA_COUNT);
+    int splitCount = strsplit(dataLine, ",", _proc2_dataArray);
+    //int splitCount = splitDataIntoArray(dataLine, _proc2_dataArray, PROC2_DATA_COUNT);
 
     if (splitCount == PROC2_DATA_COUNT) {
 
@@ -893,7 +955,8 @@ void get_m1_data() {
 
     get_subproc1_sensor_data();
 
-    int splitCount = splitDataIntoArray(_proc1SensorBuffer, _proc1_dataArray, PROC2_DATA_COUNT);
+    //int splitCount = splitDataIntoArray(_proc1SensorBuffer, _proc1_dataArray, PROC2_DATA_COUNT);
+    int splitCount = strsplit(_proc1SensorBuffer, ",", _proc1_dataArray);
 }
 
 
@@ -905,25 +968,25 @@ void switch_leds(bool onOff) {
     _ledsOnOff = onOff;
 
     if (onOff) {
-        _subProc3.send_command(1);
+        _subProc3.send_command(PROC3_COMMAND_LEDS_ON);
 
         send_craft_message(LIGHTS_ON_POS, MESSAGE_NO_VALUE);
     }
     else {
-        _subProc3.send_command(2);
+        _subProc3.send_command(PROC3_COMMAND_LEDS_OFF);
 
         send_craft_message(LIGHTS_OFF_POS, MESSAGE_NO_VALUE);
     }
 }
 
 
-double myfabs(double value)
-{
-    if (value < 0.0) return (value * -1.0);
-
-    return value;
-}
-
+//double myfabs(double value)
+//{
+    //if (value < 0.0) return (value * -1.0);
+//
+    //return value;
+//}
+//
 /**
 * \fn calculate_vertical_speed
 * \brief Calculate vertical speed (ascending:+ or descending:-) 
@@ -941,22 +1004,24 @@ double calculate_vertical_speed(double altitude, double seconds) {
 
     double mps = (altitude - previousAltitude) / seconds;
     
-    double abs_mps = myfabs(mps);
+    //double abs_mps = myfabs(mps);
 
-    printf("VS: alt: %.1f  prev: %.1f  sec: %.1f  mps: %.1f\n", altitude, previousAltitude, seconds, abs_mps);
+    //printf("VS: alt: %.1f  prev: %.1f  sec: %.1f  mps: %.1f\n", altitude, previousAltitude, seconds, abs_mps);
 
     previousAltitude = altitude;
 
     if (_warmupPeriodOver) {
-        if ((_craft_notes_flags[DIVING_POS] == 0) && (abs_mps >= 89.4)) {
+        if ((_craft_notes_flags[DIVING_POS] == 0) && (mps <= -89.4)) {
             send_craft_message(DIVING_POS, MESSAGE_NO_VALUE);
         }
         else {
-            if ((_craft_notes_flags[PLUMMETING_POS] == 0) && (abs_mps >= 111.8)) {
+            if ((_craft_notes_flags[PLUMMETING_POS] == 0) && (mps <= -111.8)) {
+                _subProc3.send_command(PROC3_COMMAND_SPEED_200);
                 send_craft_message(PLUMMETING_POS, MESSAGE_NO_VALUE);
             }
             else {
-                if ((_craft_notes_flags[SCREAMING_POS] == 0) && (abs_mps >= 134.1)) {
+                if ((_craft_notes_flags[SCREAMING_POS] == 0) && (mps <= -134.1)) {
+                    _subProc3.send_command(PROC3_COMMAND_SPEED_300);
                     send_craft_message(SCREAMING_POS, MESSAGE_NO_VALUE);
                 }
 
@@ -1001,8 +1066,7 @@ void send_telemetry() {
 
     _balloonSwitchValue = !digitalRead(GPIO_PIN_BALLOON);
     _parachuteSwitchValue = !digitalRead(GPIO_PIN_PARACHUTE);
-
-
+    
 #if (TEST_TELEMETRY)
 
     switch (_balloon_state) {
@@ -1015,7 +1079,7 @@ void send_telemetry() {
             break;
         
         case BALLOON_RISING:
-            _current_altitude += (DEFAULT_ASCENT_RATE * 2);
+        _current_altitude += ((DEFAULT_ASCENT_RATE * 2) * TEST_ASCENT_RATE_MULTIPLIER );
 
             _balloon_current_position.lat += _balloon_change_lat;
             _balloon_current_position.lon += _balloon_change_lon;
@@ -1084,7 +1148,7 @@ void send_telemetry() {
 #else
 
     if (pressure > 0.0) {
-        _current_altitude = _altitude_calculation.CalculateAltitude(pressure + _pressure_offset);
+        _current_altitude = _altitude_calculation.CalculateAltitude(pressure);
     }
     else {
 
@@ -1216,20 +1280,15 @@ sprintf(sensorData, "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s",
         );
 
     
-    printf("%d\n", ++_craft_messages);
+    
+    //if (_gps_data1_attached) {
+        //printf("GPS 1 Attached - ");
+    //}
+//
+    //if (_gps_data2_attached) {
+        //printf("GPS 2 Attached - ");
+    //}
 
-    if (_gps_data1_attached) {
-        printf("GPS 1 Attached - ");
-    }
-
-    if (_gps_data2_attached) {
-        printf("GPS 2 Attached - ");
-    }
-
-    printf("GPS: %s", gpsDataPtr);
-
-    printf("   --  Vertical Speed: %.1f\n", _vertical_speed);
-   
     evaluate_data();
 
     safety_switch_check();
@@ -1238,8 +1297,27 @@ sprintf(sensorData, "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s",
 
     strcat(_telemetry_data_string, "\n");
 
-    printf("Telem: %s\n", _telemetry_data_string);
+    //printf("Telem: %s\n", _telemetry_data_string);
+    printf("TelemetryCount: %d\n", ++_telemetry_count);
 
+    printf("air: %f | alt: %f | PresTmp: %f | Humidity: %f | Tmp36: %f | Thermo: %f | ReceptErrs: %d\n", 
+        pressure,
+        _current_altitude,
+        pressureTemp,
+        humidity,
+        tmp36,
+        thermoCouple,
+        _messageValidator.getReceptionErrorCount());
+    printf("VMain: %f | VAux: %f\n", voltageMain, voltageAux);
+    printf("Geiger: %s | UV: %f | PicCount: %d | LedsOn: %d | AltDeploy: %d | MinToRelease: %d\n", geiger, uv, _pictureCount, _ledsOnOff, _altitude_for_deploy, _minutes_till_release);
+    
+    char gps1Attached[2];
+    if (_gps_data1_attached) { strcpy(gps1Attached, "Y"); } else { strcpy(gps1Attached, "N"); }
+    char gps2Attached[2];
+    if (_gps_data2_attached) { strcpy(gps2Attached, "Y"); } else { strcpy(gps2Attached, "N"); }
+    
+    printf("GPS: %s | VertSpeed: %f | GPS1Attach: %s | GPS2Attach: %s \n\n", gpsDataPtr, _vertical_speed, gps1Attached, gps2Attached);
+    
     write_to_log("TEL", _telemetry_data_string);
 
     _serialStream_Radio->uart_transmit(_telemetry_data_string);
@@ -1355,6 +1433,8 @@ int send_craft_message(int index, int value) {
 */
 int release_balloon_now() {
 
+    static bool proc3SendMsg = TRUE;
+    
     _subProc1.send_command(PROC1_COMMAND_RELEASE_BALLOON);
 
     _balloon_released = TRUE;
@@ -1362,7 +1442,13 @@ int release_balloon_now() {
     printf("Releasing Balloon NOW!\n");
 
     send_craft_message(BALLOON_RELEASED_POS, MESSAGE_NO_VALUE);
-
+    
+    if (proc3SendMsg)
+    {
+        _subProc3.send_command(PROC3_COMMAND_GOING_DOWN);
+        proc3SendMsg = FALSE;
+    }
+    
 #if (TEST_TELEMETRY)
     
     if (_balloon_state == BALLOON_RISING) {
@@ -1435,7 +1521,10 @@ int release_balloon_time(int minutesTillRelease) {
 int deploy_parachute_now() {
 
     _subProc1.send_command(PROC1_COMMAND_DEPLOY_PARACHUTE);
-
+    usleep(100000);
+    _subProc1.send_command(PROC1_COMMAND_DEPLOY_PARACHUTE);
+    usleep(100000);
+    
     printf("Deploying Parachute NOW!\n");
 
     send_craft_message(PARACHUTE_DEPLOYED_POS, MESSAGE_NO_VALUE);
@@ -1502,7 +1591,10 @@ int rotate_video_camera(char position) {
         _videoCameraUp = TRUE;
 
         _subProc1.send_command(PROC1_COMMAND_POSITION_CAMERA_UP);
-
+        usleep(100000);
+        _subProc1.send_command(PROC1_COMMAND_POSITION_CAMERA_UP);
+        usleep(100000);
+        
         printf("Positioning Video Camera Up!\n");
 
         sprintf(_tmp_log_data, "Positioning Video Camera Up!: %d", counter);
@@ -1517,7 +1609,10 @@ int rotate_video_camera(char position) {
     printf("Positioning Video Camera Down!\n");
 
     _subProc1.send_command(PROC1_COMMAND_POSITION_CAMERA_OUT);
-
+    usleep(100000);
+    _subProc1.send_command(PROC1_COMMAND_POSITION_CAMERA_OUT);
+    usleep(100000);
+      
     sprintf(_tmp_log_data, "Positioning Video Camera Down!: %d", counter);
 
     write_to_log("VID", _tmp_log_data);
@@ -1534,8 +1629,22 @@ int rotate_video_camera(char position) {
 * \return COMMAND_SUCCESS
 */
 int display_user_message(char* msg) {
-
+    
+    if (msg == NULL) return -1;
+    
+    int msgLen = strlen(msg);
+    
+    if (msgLen == 0) return -1;
+    
     _pictureCount++;
+    
+    for (int i = 0; i < msgLen; i++)
+    {
+        if ((msg[i] == '\n') || (msg[i] == '\r'))
+        {
+            msg[i] = '\0';
+        }
+    }	
 
     printf("User message to display: %s\n", msg);
     
@@ -1675,6 +1784,7 @@ void end_warmup_period() {
 
 #if (TEST_TELEMETRY) 
 
+// Called when the balloon is released or 
 int get_altitude_index(double altitude) {
 
     for (int i = 0; i < _altitude_table_size; i++) {
@@ -1686,15 +1796,19 @@ int get_altitude_index(double altitude) {
     return -1;
 }
 
-double get_current_altitude(double altitude, bool falling) {
-
-    static bool is_falling = false;
-
-    if (!is_falling && falling) {  // just started falling
-
-    }
-
-}
+//double get_current_altitude(double altitude, bool falling) {
+//
+    //static bool is_falling = false;
+//
+    //if (!is_falling && falling) {  // just started falling
+//
+        ////int x = asdf;
+        //is_falling = TRUE;
+        //
+        //
+    //}
+//
+//}
 
 
 void load_altitude_table() {
@@ -1746,100 +1860,103 @@ void load_altitude_table() {
  
 
 
-int _testStepCounter = 0;
-int _delayCounter = 0;
-int _testDelayTargetCount = 0;
+
 
 void TestStep()
 {
-    int i;
-
-    _delayCounter++;
-    
-    if (_delayCounter < _testDelayTargetCount) return;
-
-    _delayCounter = 0;
-    
     _testStepCounter++;
     
 
-    if (_testStepCounter < 12)
+    if (_testStepCounter < TEST_STEP_PREP_DELAY_COUNT)
     {
         printf("In Prep...\n");
 
         return;
     }
     
-    if (_testStepCounter == 12)
+    if (_testStepCounter == TEST_STEP_PREP_DELAY_COUNT)
     {
         _warmupPeriodOver = TRUE;
         
-        _testDelayTargetCount = 0;
+        //int targetAltitude = TEST_TARGET_ALTITUDE_METERS;
+
+        int totalRise = TEST_TARGET_ALTITUDE_METERS - _balloon_starting_position.alt;
+        int remainder = totalRise % (int)(DEFAULT_ASCENT_RATE * TEST_ASCENT_RATE_MULTIPLIER * 2);
+
+        _testRiseCount = totalRise / (DEFAULT_ASCENT_RATE * TEST_ASCENT_RATE_MULTIPLIER * 2);
+
+        if (remainder)
+        {
+            _testRiseCount++;
+        }
+        
+        _balloon_change_lat = (_balloon_starting_position.lat - _balloon_ending_position.lat) / (_testRiseCount + 500);
+        _balloon_change_lon = (_balloon_starting_position.lon - _balloon_ending_position.lon) / (_testRiseCount + 500);
+        
+        _testRiseCount += TEST_STEP_PREP_DELAY_COUNT + 2;
         
         return;
     }
     
-    //if (_testStepCounter < 3043)
-    //{
-        //return;
-    //}
+    if (_testStepCounter < _testRiseCount)  //3043)
+    {
+        return;
+    }
     
-    if (_testStepCounter == 3043)
+    if (_testStepCounter == _testRiseCount)  //3043)
     {
         release_balloon_now();
-        
+
         return;
     }
     
 
-    //if (_testStepCounter < 3143)
-    //{
-        //return;
-    //}
+    if (_testStepCounter < _testRiseCount + 100)
+    {
+        return;
+    }
     
-    if (_testStepCounter == 3143)
+    if (_testStepCounter == _testRiseCount + 100)
     {
         return;
     }
 
-    //if (_testStepCounter < 3243)
-    //{
-        //return;
-    //}
+    if (_testStepCounter < _testRiseCount + 200)
+    {
+        return;
+    }
     
-    if (_testStepCounter == 3243)
+    if (_testStepCounter == _testRiseCount + 200)
     {
         return;
     }
 
-    //if (_testStepCounter < 3343)
-    //{
-        //return;
-    //}
-    
-    if (_testStepCounter == 3343)
+    if (_testStepCounter < _testRiseCount + 300)
     {
-        deploy_parachute_now();
-        
         return;
     }
-
-    //if (_testStepCounter < 3443)
-    //{
-        //return;
-    //}
     
-    if (_testStepCounter == 3443)
+    if (_testStepCounter == _testRiseCount + 300)
     {
         return;
     }
 
-    //if (_testStepCounter < 3543)
-    //{
-        //return;
-    //}
+    if (_testStepCounter < _testRiseCount + 400)
+    {
+        return;
+    }
     
-    if (_testStepCounter == 3543)
+    if (_testStepCounter == _testRiseCount + 400)
+    {
+        return;
+    }
+
+    if (_testStepCounter < _testRiseCount + 500)
+    {
+        return;
+    }
+    
+    if (_testStepCounter == _testRiseCount + 500)
     {
         return;
     }
@@ -1922,13 +2039,11 @@ int test_uart_streams(char uartNumber)
 int main(int argc, char *argv [])
 {
     initialize_log(TELEMETRY_LOG_FILE);
-        
+   
     initialize_serial_devices();
     
     wiring_pi_setup();
     
-    //_pressure_offset = -10.0;
-
     _initial_time = time(NULL);
 
     _pictureCount = 0;
@@ -1939,27 +2054,50 @@ int main(int argc, char *argv [])
         0.0, 0.0, 0.0, 0.0, 0.0, 0, 0);
 
     switch_leds(FALSE);
-
+    
+    display_user_message("Testing...");
+    
+    _subProc1.send_command(PROC3_COMMAND_RESET);
     //rotate_video_camera('U');
     
-    deploy_parachute_now();
-    
-    release_balloon_now();
-    
-    rotate_video_camera('U');
+    _subProc1.send_command(PROC1_COMMAND_RESET_SERVOS);
     
     
-    
-    
-    
-    deploy_parachute_now();
-    
-    release_balloon_now();
-    
+    //display_user_message("Hello, I am testing you.  Please work!");
+    //
+    //_subProc3.send_command(3);
+    //_subProc3.send_command(4);
+    //_subProc3.send_command(5);
+    //_subProc3.send_command(6);
+    //_subProc3.send_command(7);
+    //_subProc3.send_command(8);
+    //_subProc3.send_command(9);
+    //
+    //
+    //deploy_parachute_now();
+    //
+    //release_balloon_now();
+    //
+    //rotate_video_camera('U');
+    //
+    //
+    //_subProc1.send_command(PROC1_COMMAND_RESET_SERVOS);
+    //
+    //
+    //
+    //deploy_parachute_now();
+    //
+    //release_balloon_now();
+//
+    //_subProc1.send_command(PROC1_COMMAND_RESET_SERVOS);
+
 #if (TEST_TELEMETRY)
 
+    // Load Altitude table for testing - Contains data to simulate falling. 
+    //  Rising is handled through simple addition of a constant rise rate.
     load_altitude_table();
 
+    // Zero out starting and ending positions 
     _balloon_starting_position.lat = 0.0;
     _balloon_starting_position.lon = 0.0;
     _balloon_starting_position.alt = 0.0;
@@ -1968,8 +2106,9 @@ int main(int argc, char *argv [])
     _balloon_ending_position.lon = 0.0;
     _balloon_ending_position.alt = 0.0;
 
+    // Open the projected start / end GPS coordinates
     FILE* gpsFileHandle_fp;
-    const char* gpsFile = "/home/pi/p2data/ProjectedGpsLocation.txt";
+    const char* gpsFile = GPS_PROJECTION_DATA_FILE;
 
     gpsFileHandle_fp = fopen(gpsFile, "r");
 
@@ -1988,7 +2127,8 @@ int main(int argc, char *argv [])
 
             if (line) {
 
-                int count = splitDataIntoArray(line, _tmp_telemetry_value_list, 6);
+                //int count = splitDataIntoArray(line, _tmp_telemetry_value_list, 6);
+                int count = strsplit(line, ",", _tmp_telemetry_value_list);
 
                 if (count == 6) {
 
@@ -2010,8 +2150,8 @@ int main(int argc, char *argv [])
 
                     _current_altitude = _balloon_current_position.alt;
 
-                    _balloon_change_lat = (_balloon_starting_position.lat - _balloon_ending_position.lat) / 3000;
-                    _balloon_change_lon = (_balloon_starting_position.lon - _balloon_ending_position.lon) / 3000;
+                    //_balloon_change_lat = (_balloon_starting_position.lat - _balloon_ending_position.lat) / 3000;
+                    //_balloon_change_lon = (_balloon_starting_position.lon - _balloon_ending_position.lon) / 3000;
                 }
 
                 free(line);
@@ -2089,7 +2229,7 @@ int main(int argc, char *argv [])
 
     _telemetry_timer.every(1000, get_m1_data);
     
-    _telemetry_timer.every(50, send_telemetry);
+    _telemetry_timer.every(2000, send_telemetry);
     
     int received0;
 

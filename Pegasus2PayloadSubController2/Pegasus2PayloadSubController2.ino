@@ -1,7 +1,7 @@
 #include "Timer.h"
 #include <SPI.h>
 #include <Wire.h>
-#include <Adafruit_Sensor.h>
+#include <Adafruit_Sensor/Adafruit_Sensor.h>
 #include <Adafruit_LSM9DS0.h>
 #include <SparkFunHTU21D.h>
 #include <SparkFun_MS5803_I2C.h>
@@ -27,10 +27,15 @@
 #define ADC_COUNT                      1024.0
 #define VOLTAGE_RATIO       (REFERENCE_VOLTAGE / ADC_COUNT)
 
+#define THERMOCOUPLE_VARIABILITY  15.0
+
 void sendSensorSamples();
 void configureSensors(void);
 
 Adafruit_MAX31855 thermocouple(CLK, CS, DO);
+
+double _thermocouple_temp_c_previous = 0.0;
+double _temperatureC_previous = 0.0;
 
 
 /* Assign a unique base ID for this sensor */
@@ -48,11 +53,11 @@ MS5803 pressure_sensor(ADDRESS_HIGH);
 
 char sensorData[160];
 
-float pressure_temperature_c;
-float pressure_abs;
-float pressure_baseline;
-float humidity;
-float humidity_temp;
+double pressure_temperature_c;
+double pressure_abs;
+double pressure_baseline;
+double humidity;
+double humidity_temp;
 double thermocouple_temp_c;
 
 
@@ -182,15 +187,42 @@ void sendSensorSamples() {
         thermocouple_temp_c = -999.0;
     }
 
+    if ((thermocouple_temp_c <= _thermocouple_temp_c_previous + THERMOCOUPLE_VARIABILITY) &&
+        (thermocouple_temp_c >= _thermocouple_temp_c_previous - THERMOCOUPLE_VARIABILITY))
+    {
+        _thermocouple_temp_c_previous = thermocouple_temp_c;
+    } else
+    {
+        thermocouple_temp_c = _thermocouple_temp_c_previous;
+    }
+
     //getting the voltage reading from the temperature sensor
     int tmpReading = analogRead(TMP_36_PIN);
    
     // converting that reading to voltage, for 3.3v arduino use 3.3
-    float voltage_value = tmpReading * VOLTAGE_RATIO;
+    double voltage_value = tmpReading * VOLTAGE_RATIO;
 
     // now print out the temperature
-    float temperatureC = (voltage_value - 0.5) * 100;  //converting from 10 mv per degree wit 500 mV offset
+    double temperatureC = (voltage_value - 0.5) * 100;  //converting from 10 mv per degree wit 500 mV offset
                                                      //to degrees ((tmp_voltage - 500mV) times 100)
+
+
+    if (isnan(temperatureC)) {
+        temperatureC = -999.0;
+    }
+
+    if ((temperatureC <= _thermocouple_temp_c_previous + THERMOCOUPLE_VARIABILITY) &&
+        (temperatureC >= _thermocouple_temp_c_previous - THERMOCOUPLE_VARIABILITY))
+    {
+        _temperatureC_previous = temperatureC;
+    }
+    else
+    {
+        temperatureC = _temperatureC_previous;
+    }
+
+
+
     sprintf(sensorData, "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s",
         dtostrf(pressure_abs, 3, 1, scratch01),
         dtostrf(pressure_temperature_c, 3, 1, scratch02),  
@@ -219,6 +251,8 @@ void sendSensorSamples() {
 #endif
 
 }
+
+
 
 
 void configureSensors(void)
@@ -264,4 +298,34 @@ void configureSensors(void)
     pressure_sensor.begin();
 
     pressure_baseline = pressure_sensor.getPressure(ADC_4096);
+
+
+    for (int i = 0; i < 10; i++)
+    {
+        thermocouple_temp_c = thermocouple.readCelsius();
+
+        if (!isnan(thermocouple_temp_c)) {
+            _thermocouple_temp_c_previous = thermocouple_temp_c;
+        }
+    }
+
+
+   
+
+    for (int i = 0; i < 10; i++)
+    {
+        //getting the voltage reading from the temperature sensor
+        int tmpReading = analogRead(TMP_36_PIN);
+
+        // converting that reading to voltage, for 3.3v arduino use 3.3
+        double voltage_value = tmpReading * VOLTAGE_RATIO;
+
+        // now print out the temperature
+        double temperatureC = (voltage_value - 0.5) * 100;  //converting from 10 mv per degree wit 500 mV offset
+                                                            //to degrees ((tmp_voltage - 500mV) times 100)
+
+        if (!isnan(temperatureC)) {
+            _temperatureC_previous = temperatureC;
+        }
+    }
 }

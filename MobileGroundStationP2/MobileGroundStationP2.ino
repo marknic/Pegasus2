@@ -97,13 +97,13 @@ uint16_t _radioMsgOutCount = RADIO_MSG_OFFSET_INIT;
 uint16_t _prevAltitude;
 
 
-byte second;
-byte minute;
-byte hour;
-byte dayOfWeek;
-byte day;
-byte month;
-byte year;
+uint8_t second;
+uint8_t minute;
+uint8_t hour;
+uint8_t dayOfWeek;
+uint8_t day;
+uint8_t month;
+uint8_t year;
 
 latLonAlt _launchStationPosition;
 latLonAlt _mobileStationPosition;
@@ -111,6 +111,8 @@ latLonAlt _balloonPosition;
 azDistVals _calculatedValuesBalloon;
 azDistVals _calculatedValuesStations;
 
+
+void generateTelemetry();
 
 
 //// Interrupt is called once a millisecond, looks for any new GPS data, and stores it
@@ -252,23 +254,23 @@ void watchdog_reset() {
 }
 
 // Convert binary coded decimal to normal decimal numbers
-byte bcdToDec(byte val)
+uint8_t bcdToDec(uint8_t val)
 {
     return ((val / 16 * 10) + (val % 16));
 }
 
 // Convert normal decimal numbers to binary coded decimal
-byte decToBcd(byte val)
+uint8_t decToBcd(uint8_t val)
 {
     return ((val / 10 * 16) + (val % 10));
 }
 
 
-void setDateTime(byte year, byte month, byte day, byte hour, byte minute, byte second)
+void setDateTime(uint8_t year, uint8_t month, uint8_t day, uint8_t hour, uint8_t minute, uint8_t second)
 {
-    byte dayOfWeek = (byte) 0;
+    uint8_t dayOfWeek = (uint8_t) 0;
     Wire.beginTransmission(CLOCK_ADDRESS);
-    Wire.write(byte(0x00));
+    Wire.write(uint8_t(0x00));
     Wire.write(decToBcd(second));  // 0 to bit 7 starts the clock
     Wire.write(decToBcd(minute));
     Wire.write(decToBcd(hour));    // If you want 12 hour am/pm you need to set
@@ -282,7 +284,7 @@ void setDateTime(byte year, byte month, byte day, byte hour, byte minute, byte s
 
 void getDateTime() {
     Wire.beginTransmission(CLOCK_ADDRESS);
-    Wire.write(byte(0x00));
+    Wire.write(uint8_t(0x00));
     Wire.endTransmission();
 
     Wire.requestFrom(CLOCK_ADDRESS, 7);
@@ -614,13 +616,13 @@ void loop()
 
                     if (!_realTimeClockSet) {
                         if (_radioMessageIn[0] == TELEMETRY_INDICATOR_CHAR) {
-                            second = (byte) ((_radioMessageIn[19] - 48) * 10 + (_radioMessageIn[20] - 48));
-                            minute = (byte) ((_radioMessageIn[16] - 48) * 10 + (_radioMessageIn[17] - 48));
-                            hour = (byte) ((_radioMessageIn[13] - 48) * 10 + (_radioMessageIn[14] - 48));
-                            dayOfWeek = (byte) 0;
-                            day = (byte) ((_radioMessageIn[10] - 48) * 10 + (_radioMessageIn[11] - 48));
-                            month = (byte) ((_radioMessageIn[7] - 48) * 10 + (_radioMessageIn[8] - 48));
-                            year = (byte) ((_radioMessageIn[4] - 48) * 10 + (_radioMessageIn[5] - 48));
+                            second = (uint8_t) ((_radioMessageIn[19] - 48) * 10 + (_radioMessageIn[20] - 48));
+                            minute = (uint8_t) ((_radioMessageIn[16] - 48) * 10 + (_radioMessageIn[17] - 48));
+                            hour = (uint8_t) ((_radioMessageIn[13] - 48) * 10 + (_radioMessageIn[14] - 48));
+                            dayOfWeek = (uint8_t) 0;
+                            day = (uint8_t) ((_radioMessageIn[10] - 48) * 10 + (_radioMessageIn[11] - 48));
+                            month = (uint8_t) ((_radioMessageIn[7] - 48) * 10 + (_radioMessageIn[8] - 48));
+                            year = (uint8_t) ((_radioMessageIn[4] - 48) * 10 + (_radioMessageIn[5] - 48));
 
                             if (year == 15) {
                                 setDateTime(year, month, day, hour, minute, second);

@@ -1,4 +1,4 @@
-
+﻿
 #ifndef TRUE
 #define TRUE                             (1==1)
 #endif
@@ -78,12 +78,26 @@
 #define PROC1_COMMAND_POSITION_CAMERA_OUT     3
 #define PROC1_COMMAND_POSITION_CAMERA_UP      4
 #define PROC1_COMMAND_RESET_DATA              5
+#define PROC1_COMMAND_RESET_SERVOS            9
 
-#define PROC3_COMMAND_LEDS_ON                 1
-#define PROC3_COMMAND_LEDS_OFF                2
 #define PROC3_SEND_THANK_MSR                  3
 #define PROC3_SEND_PEOPLE_OF_EARTH            4
 #define PROC3_SEND_FLIGHT_TEAM                5
+
+#define PROC3_COMMAND_RESET                   0
+#define PROC3_COMMAND_LEDS_ON                 1
+#define PROC3_COMMAND_LEDS_OFF                2
+#define PROC3_COMMAND_THANK_MSR               3
+#define PROC3_COMMAND_EARTH_PEOPLE            4
+#define PROC3_COMMAND_FLIGHT_LEADS            5
+#define PROC3_COMMAND_HIMON                   6
+#define PROC3_COMMAND_REACHED_GOAL            7
+#define PROC3_COMMAND_GOING_DOWN              8
+#define PROC3_COMMAND_GOING_UP                9
+#define PROC3_COMMAND_ABOVE_TRAFFIC          10
+#define PROC3_COMMAND_STRATOSPHERE           11
+#define PROC3_COMMAND_SPEED_200              12
+#define PROC3_COMMAND_SPEED_300              13
 
 
 // wiringPi Pins
@@ -115,6 +129,13 @@
 #define DEFAULT_PARACHUTE_DECENT_RATE       5.0
 #define DEFAULT_ASCENT_RATE					5.0
 
+// Assuming start altitude of 175 meters
+// Other ascent rate info:
+//#define DEFAULT_ASCENT_RATE					50.0  // 304 Steps - 5.06 min
+//#define DEFAULT_ASCENT_RATE					100.0  // 152 Steps - 2.5 min
+//#define DEFAULT_ASCENT_RATE					200.0  // 76 Steps - 1.26 min
+
+
 #define MPH_PER_KNOT          1.150779448023543
 #define KPH_PER_KNOT                      1.852
 
@@ -127,5 +148,19 @@
 
 
 #define TELEMETRY_LOG_FILE					"/home/pi/PegasusMission/telemetryLog.txt"
+#define GPS_PROJECTION_DATA_FILE            "/home/pi/p2data/ProjectedGpsLocation.txt"
 #define IS_GPS								  1
 #define IS_PROC2							  2
+
+
+#if (TEST_TELEMETRY) 
+
+#define TEST_STEP_PREP_DELAY_COUNT			 12
+
+#define TEST_TARGET_ALTITUDE_METERS       30480
+
+#define TEST_ASCENT_RATE_MULTIPLIER          40
+
+
+#endif 
+
