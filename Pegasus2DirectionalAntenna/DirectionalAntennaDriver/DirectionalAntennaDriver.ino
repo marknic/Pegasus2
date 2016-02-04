@@ -2,7 +2,7 @@
 #include <Wire.h>
 #include <Servo.h>
 #include <SPI.h>
-//#include <Adafruit_Sensor.h>
+#include <Adafruit_Sensor/Adafruit_Sensor.h>
 #include <Adafruit_LSM9DS0.h>
 #include <avr/wdt.h>
 //#include "AzimuthElevation.h"
@@ -74,8 +74,8 @@
 //#define DEBUG_ELEVATION
 //#define DEBUG_GENERAL
 
-#define DEBUG_INITIALIZE
-#define DEBUG_SERIAL_COM
+//#define DEBUG_INITIALIZE
+//#define DEBUG_SERIAL_COM
 
 // Custom type to manage compass and elevation values
 struct DirectionalValues {
@@ -236,7 +236,7 @@ void init_Sensors()
     }
     
 #ifdef DEBUG_INITIALIZE
-    Serial.println("Initialization Complete...");
+    Serial.println(">_Initialization Complete...");
 #endif
 
     configureLsmSensor();
@@ -307,10 +307,10 @@ void initialize_compassSettings(float center) {
     }
 
 #ifdef DEBUG_AZIMUTH
-    Serial.print("Min: "); Serial.print(_compassMin);
-    Serial.print(" - Center: "); Serial.print(center);
-    Serial.print(" - Max: "); Serial.print(_compassMax);
-    Serial.print(" - AdjCenter: "); Serial.print(_adjustedCenter);
+    Serial.print(">_Min: "); Serial.print(_compassMin);
+    Serial.print(">_ - Center: "); Serial.print(center);
+    Serial.print(">_ - Max: "); Serial.print(_compassMax);
+    Serial.print(">_ - AdjCenter: "); Serial.print(_adjustedCenter);
 #endif
     // Final adjustment to "max" to get a linear set of values
     if ((center < _compassMin) || (_compassMax < center)) {
@@ -454,15 +454,19 @@ void move_servos() {
     float heading = _compass_sensor.get_heading();
     float pitch = get_lsm_pitch();
 
+#ifdef DEBUG_SERIAL_COM
     Serial.print("heading: "); Serial.print(heading);
     Serial.print("  -  pitch: "); Serial.print(pitch);
+#endif
 
     _currentDirectionalValues.azimuth = smoothData(heading, _currentDirectionalValues.azimuth);
     _currentDirectionalValues.elevation = smoothData(pitch, _currentDirectionalValues.elevation);
 
+#ifdef DEBUG_SERIAL_COM
     Serial.print("  ::  azimuth: "); Serial.print(_currentDirectionalValues.azimuth);
     Serial.print("  -  elevation: "); Serial.print(_currentDirectionalValues.elevation);
     Serial.println();
+#endif
 
     if (_targetDir.azimuth > FLOAT_EMPTY_LIMIT) {
         result = calculate_compassGoto(_centerDirectionalValues.azimuth, _currentDirectionalValues.azimuth, _targetDir.azimuth, &distance);
@@ -569,8 +573,6 @@ void delay_with_update(int8_t seconds) {
 }
 
 
-
-
 double get_servo_elevation_target(double target_angle) {
     return ((target_angle - _degrees_low) * _servo_move_per_degree) + SERVO_ELEVATION_LOW;
 }
@@ -578,7 +580,9 @@ double get_servo_elevation_target(double target_angle) {
 
 void center_and_initialize() {
 
+#ifdef DEBUG_SERIAL_COM
     Serial.println("Resetting");
+#endif
 
     _servoLocation.azimuth = SERVO_AZIMUTH_CENTER;
     _servoLocation.elevation = SERVO_ELEVATION_CENTER;
@@ -592,7 +596,9 @@ void center_and_initialize() {
 
     _degrees_low = get_lsm_pitch();
 
+#ifdef DEBUG_SERIAL_COM
     Serial.print("_degrees_low: "); Serial.println(_degrees_low);
+#endif
 
     _servoElevation.write(SERVO_ELEVATION_HIGH);
 
@@ -600,11 +606,16 @@ void center_and_initialize() {
 
     _degrees_high = get_lsm_pitch();
 
+#ifdef DEBUG_SERIAL_COM
     Serial.print("_degrees_high: "); Serial.println(_degrees_high);
+#endif
 
     _servo_move_per_degree = (SERVO_ELEVATION_LOW - SERVO_ELEVATION_HIGH) / (_degrees_low - _degrees_high);
 
+
+#ifdef DEBUG_SERIAL_COM
     Serial.print("_servo_move_per_degree: "); Serial.println(_servo_move_per_degree);
+#endif
 
     _servoElevation.write(SERVO_ELEVATION_CENTER);
 
@@ -618,53 +629,19 @@ void center_and_initialize() {
 
 }
 
-//
-//void center_and_initialize2() {
-//
-//    Serial.println("Resetting");
-//
-//    _servoLocation.azimuth = SERVO_AZIMUTH_CENTER;
-//    _servoLocation.elevation = SERVO_ELEVATION_CENTER;
-//
-//    _servoAzimuth.write(_servoLocation.azimuth);
-//    _servoElevation.write(_servoLocation.elevation);
-//    
-//    _timer.update();
-//
-//    delay(1000);
-//
-//    _timer.update();
-//
-//    delay(1000);
-//
-//    _timer.update();
-//
-//    delay(1000);
-//
-//    initialize_averageDirectionalValues();
-//
-//    initialize_compassSettings(_centerDirectionalValues.azimuth);
-//
-//    _timer.update();
-//}
+
 
 void setup() {
 
-    Serial.println("Wire Begin");
+    Serial.begin(SERIAL_BAUD_RATE);  // start serial for output
+
+    delay(100);
 
     Wire.begin();
 
-    Serial.println("Begin");
-    Serial.begin(SERIAL_BAUD_RATE);  // start serial for output
-     
-
     digitalWrite(SERVO_RELAY_PIN, HIGH);
 
-    Serial.println("Pin Setup");
-
     pinMode(SERVO_RELAY_PIN, OUTPUT);
-
-    
 
     _targetDir.elevation = FLOAT_EMPTY_FLAG;
     _targetDir.azimuth = FLOAT_EMPTY_FLAG;
@@ -697,14 +674,15 @@ void setup() {
 #ifdef DEBUG_INITIALIZE
     Serial.println("Relay On");
 #endif
+    // Turn relay on - Power the servos
     digitalWrite(SERVO_RELAY_PIN, LOW);
 
     delay(4000);
 
-
     center_and_initialize();
 
     watchdogSetup();
+
     _timer.every(1000, watchdog_reset);
     _timer.every(150, move_servos);
 
@@ -726,8 +704,11 @@ void loop() {
     while (Serial.available() > 0) {
 
         char incomingByte = (char) Serial.read();
-        
+
+
+#ifdef DEBUG_SERIAL_COM
         Serial.print(incomingByte);
+#endif
 
         // AzEl Data
         if (incomingByte == AZ_EL_INDICATOR_CHAR) {
@@ -739,7 +720,9 @@ void loop() {
         if (_azElMsgInCount >= AZ_EL_MSG_LEN_MAX) {
             _azElMsgInCount = RADIO_MSG_OFFSET_INIT;
 
+#ifdef DEBUG_SERIAL_COM
             Serial.print("#Data 2 Error: msg > "); Serial.print(AZ_EL_LEN); Serial.println(" bytes");
+#endif
         }
 
         _az_el_msg[_azElMsgInCount] = incomingByte;
@@ -769,20 +752,32 @@ void loop() {
                     Serial.println();
 #endif
                 }
+                // "|H!\n"  - GET Current Direction
+                else if (((_az_el_msg[1] == 'H') || (_az_el_msg[1] == 'h')) && (_az_el_msg[2] == '!')) {
+                    center_and_initialize();
+
+                    // Message format: "|H:###.#\n"
+                    char headingRegister[8];
+
+                    headingRegister[0] = '|';
+                    headingRegister[1] = 'H';
+                    headingRegister[2] = ':';
+
+                    dtostrf(_currentDirectionalValues.azimuth, 5, 1, &headingRegister[3]);
+                    headingRegister[8] = '\0';
+
+                    Serial.println(headingRegister);
+                }
                 else {
+
+#ifdef DEBUG_SERIAL_COM
                     Serial.print("Bad Data: "); Serial.println(_az_el_msg);
+#endif
                 }
 
             }
         }
     }
-
-    // Reset!
-    //int buttonState = digitalRead(BUTTON_PIN);
-
-    //if (buttonState == LOW) {
-    //    center_and_initialize();
-    //}
 
     delay(75);
 }

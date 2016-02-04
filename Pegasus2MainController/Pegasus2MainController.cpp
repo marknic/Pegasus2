@@ -1011,16 +1011,16 @@ double calculate_vertical_speed(double altitude, double seconds) {
     previousAltitude = altitude;
 
     if (_warmupPeriodOver) {
-	    if ((_craft_notes_flags[DIVING_POS] == 0) && (mps <= -89.4)) {
+        if ((_craft_notes_flags[DIVING_POS] == 0) && (mps <= -89.4)) {
             send_craft_message(DIVING_POS, MESSAGE_NO_VALUE);
         }
         else {
-	        if ((_craft_notes_flags[PLUMMETING_POS] == 0) && (mps <= -111.8)) {
+            if ((_craft_notes_flags[PLUMMETING_POS] == 0) && (mps <= -111.8)) {
                 _subProc3.send_command(PROC3_COMMAND_SPEED_200);
                 send_craft_message(PLUMMETING_POS, MESSAGE_NO_VALUE);
             }
             else {
-	            if ((_craft_notes_flags[SCREAMING_POS] == 0) && (mps <= -134.1)) {
+                if ((_craft_notes_flags[SCREAMING_POS] == 0) && (mps <= -134.1)) {
                     _subProc3.send_command(PROC3_COMMAND_SPEED_300);
                     send_craft_message(SCREAMING_POS, MESSAGE_NO_VALUE);
                 }
@@ -2054,10 +2054,10 @@ int main(int argc, char *argv [])
         0.0, 0.0, 0.0, 0.0, 0.0, 0, 0);
 
     switch_leds(FALSE);
-	
-	display_user_message("Testing...");
     
-	_subProc1.send_command(PROC3_COMMAND_RESET);
+    display_user_message("Testing...");
+    
+    _subProc1.send_command(PROC3_COMMAND_RESET);
     //rotate_video_camera('U');
     
     _subProc1.send_command(PROC1_COMMAND_RESET_SERVOS);
