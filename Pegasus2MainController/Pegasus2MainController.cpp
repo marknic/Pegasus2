@@ -61,24 +61,17 @@ bool _warmupPeriodOver = FALSE;     //  <<<<<<<<<<<<<<<<<<<<<
 
 Timer _telemetry_timer;
 
+// USB Serial devices
+UartStream* _serialStream_Gps1;             // Primary GPS
+UartStream* _serialStream_subProc2;			// MC2 sensor data stream
+UartStream* _serialStream_Gps2;				// Secondary GPS
+UartStream* _serialStream_Radio;			// 900 MHz Data Modem
 
-UartStream* _serialStream_Gps1;              // ***
-UartStream* _serialStream_subProc2;
-
-UartStream* _serialStream_Gps2;
-UartStream* _serialStream_Radio;
-
-
-//UartStream _serialStream_Gps1('3', process_gps_data1, FALSE, "GPS 1");              // ***
-//UartStream _serialStream_subProc2('0', process_proc2_data, FALSE, "MicroController 2");
-//
-//UartStream _serialStream_Gps2('1', process_gps_data2, FALSE, "GPS 2");
-//UartStream _serialStream_Radio('2', process_radio_data, FALSE, "Radio Modem");
-
-
+// GPS Data Parsers
 GpsData* _gps1_data = NULL;
 GpsData* _gps2_data = NULL; 
 
+// Altitude calculations based on air pressure
 AltitudeCalc _altitude_calculation;
 
 int _pictureCount = 0;     
@@ -116,27 +109,25 @@ uint8_t _craft_notes_flags[CRAFT_NOTE_COUNT] = {
     CRAFT_MESSAGE_NOT_SENT, CRAFT_MESSAGE_NOT_SENT, CRAFT_MESSAGE_NOT_SENT, CRAFT_MESSAGE_NOT_SENT, 
     CRAFT_MESSAGE_NOT_SENT, CRAFT_MESSAGE_NOT_SENT, CRAFT_MESSAGE_NOT_SENT, CRAFT_MESSAGE_NOT_SENT, 
     CRAFT_MESSAGE_NOT_SENT, CRAFT_MESSAGE_NOT_SENT, CRAFT_MESSAGE_NOT_SENT, CRAFT_MESSAGE_NOT_SENT, 
-    CRAFT_MESSAGE_MULTISEND, CRAFT_MESSAGE_MULTISEND, CRAFT_MESSAGE_MULTISEND, CRAFT_MESSAGE_MULTISEND, 
-    CRAFT_MESSAGE_NOT_SENT };
+    CRAFT_MESSAGE_MULTISEND, CRAFT_MESSAGE_MULTISEND, CRAFT_MESSAGE_MULTISEND, CRAFT_MESSAGE_MULTISEND };
 
 char _craft_notes[CRAFT_NOTE_COUNT][CRAFT_NOTE_TEXT_LENGTH] = {
-    "}N:PII - Liftoff",
+    "}N:PII - Liftoff - Pegasus 2 is Flying",
     "}N:PII - Safe Mode",
-    "}N:PII - Above Air Traffic",
-    "}N:PII - Curvature Seen",
-    "}N:PII - Goal Altitude Reached!",
+    "}N:PII - Above Air Traffic (40,000')",
+    "}N:PII - Curvature Seen (65,000')",
+    "}N:PII - Goal Altitude Reached! (100,000')",
     "}N:PII - Balloon Released-Falling!",
     "}N:PII - Parachute Deployed",
-    "}N:PII - I can see my house!",
-    "}N:PII - Reached Stratosphere!",
+    "}N:PII - I can see my house! (Half-way Point: 50,000')",
+    "}N:PII - Reached Stratosphere! (Roughly: 33,000')",
     "}N:PII - Diving over 200MPH!",
-    "}N:PII - Plummeting over 250MPH!",
-    "}N:PII - Screaming over 300MPH!",
-    "}N:PII - Minutes to Autorelease: %d",
-    "}N:PII - Autodeploy Altitude: %d",
+    "}N:PII - Screaming over 250MPH!",
+    "}N:PII - Plummeting over 300MPH!",
+    "}N:PII - Minutes to Autorelease Set to: %d min",
+    "}N:PII - Autodeploy Altitude Set to: %d'",
     "}N:PII - UFO Lights On",
-    "}N:PII - UFO Lights Off",
-    "}N:PII - Craft Armed"
+    "}N:PII - UFO Lights Off"
 };
 
 
@@ -1015,14 +1006,14 @@ double calculate_vertical_speed(double altitude, double seconds) {
             send_craft_message(DIVING_POS, MESSAGE_NO_VALUE);
         }
         else {
-            if ((_craft_notes_flags[PLUMMETING_POS] == 0) && (mps <= -111.8)) {
+	        if ((_craft_notes_flags[SCREAMING_POS] == 0) && (mps <= -111.8)) {
                 _subProc3.send_command(PROC3_COMMAND_SPEED_200);
-                send_craft_message(PLUMMETING_POS, MESSAGE_NO_VALUE);
+		        send_craft_message(SCREAMING_POS, MESSAGE_NO_VALUE);
             }
             else {
-                if ((_craft_notes_flags[SCREAMING_POS] == 0) && (mps <= -134.1)) {
+	            if ((_craft_notes_flags[PLUMMETING_POS] == 0) && (mps <= -134.1)) {
                     _subProc3.send_command(PROC3_COMMAND_SPEED_300);
-                    send_craft_message(SCREAMING_POS, MESSAGE_NO_VALUE);
+		            send_craft_message(PLUMMETING_POS, MESSAGE_NO_VALUE);
                 }
 
             }
