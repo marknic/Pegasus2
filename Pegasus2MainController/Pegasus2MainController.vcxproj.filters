@@ -82,6 +82,9 @@
     <ClCompile Include="GpioCtrl.cpp">
       <Filter>Source files</Filter>
     </ClCompile>
+    <ClCompile Include="AltitudePressure.cpp">
+      <Filter>Source files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="Makefile" />
@@ -175,9 +178,13 @@
     <ClInclude Include="GpioCtrl.h">
       <Filter>Header files</Filter>
     </ClInclude>
+    <ClInclude Include="AltitudePressure.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="P2CraftTestTelemtry.txt" />
     <Text Include="ProjectedGpsLocation.txt" />
+    <Text Include="PressureAltitudeChart.txt" />
   </ItemGroup>
 </Project>

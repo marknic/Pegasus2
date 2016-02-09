@@ -16,7 +16,7 @@
 #define PACKET_LENGTH                        32
 #define SIZES_PACKET_LENGTH                   3
                                           
-#define CRAFT_NOTE_COUNT                     17
+#define CRAFT_NOTE_COUNT                     16
 #define CRAFT_NOTE_TEXT_LENGTH               60
 #define LIFTOFF_POS                           0
 #define SAFE_MODE_POS                         1
@@ -34,7 +34,6 @@
 #define AUTODEPLOY_HEIGHT_POS                13
 #define LIGHTS_ON_POS                        14
 #define LIGHTS_OFF_POS                       15
-#define CRAFT_ARMED_POS                      16
                                           
 #define CRAFT_MESSAGE_NOT_SENT                0
 #define CRAFT_MESSAGE_SENT                    1

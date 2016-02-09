@@ -1006,14 +1006,14 @@ double calculate_vertical_speed(double altitude, double seconds) {
             send_craft_message(DIVING_POS, MESSAGE_NO_VALUE);
         }
         else {
-	        if ((_craft_notes_flags[SCREAMING_POS] == 0) && (mps <= -111.8)) {
+            if ((_craft_notes_flags[SCREAMING_POS] == 0) && (mps <= -111.8)) {
                 _subProc3.send_command(PROC3_COMMAND_SPEED_200);
-		        send_craft_message(SCREAMING_POS, MESSAGE_NO_VALUE);
+                send_craft_message(SCREAMING_POS, MESSAGE_NO_VALUE);
             }
             else {
-	            if ((_craft_notes_flags[PLUMMETING_POS] == 0) && (mps <= -134.1)) {
+                if ((_craft_notes_flags[PLUMMETING_POS] == 0) && (mps <= -134.1)) {
                     _subProc3.send_command(PROC3_COMMAND_SPEED_300);
-		            send_craft_message(PLUMMETING_POS, MESSAGE_NO_VALUE);
+                    send_craft_message(PLUMMETING_POS, MESSAGE_NO_VALUE);
                 }
 
             }
@@ -1060,7 +1060,11 @@ void send_telemetry() {
     
 #if (TEST_TELEMETRY)
 
-    switch (_balloon_state) {
+    if (_safetySwitchValue)
+    {
+        
+    
+        switch (_balloon_state) {
 
         case BALLOON_PREP:
 
@@ -1070,7 +1074,7 @@ void send_telemetry() {
             break;
         
         case BALLOON_RISING:
-        _current_altitude += ((DEFAULT_ASCENT_RATE * 2) * TEST_ASCENT_RATE_MULTIPLIER );
+            _current_altitude += ((DEFAULT_ASCENT_RATE * 2) * TEST_ASCENT_RATE_MULTIPLIER);
 
             _balloon_current_position.lat += _balloon_change_lat;
             _balloon_current_position.lon += _balloon_change_lon;
@@ -1093,7 +1097,7 @@ void send_telemetry() {
 
         case BALLOON_FALLING:
 
-             if ((_altitude_index < _altitude_table_size) && (_current_altitude > _balloon_ending_position.alt)) {
+            if ((_altitude_index < _altitude_table_size) && (_current_altitude > _balloon_ending_position.alt)) {
                 _current_altitude = _altitude_table[_altitude_index++].altitude_meters;
 
                 if (_current_altitude < _ground_altitude) {
@@ -1122,9 +1126,10 @@ void send_telemetry() {
             }
 
             break;
+        }
+
     }
-
-
+    
     sprintf(_gpsDataString1, "%7.5f,%7.5f,%3.1f,%3.1f,%3.1f,%d,%d",
         _balloon_current_position.lat,
         _balloon_current_position.lon,
@@ -1851,12 +1856,61 @@ void load_altitude_table() {
  
 
 
+void load_pressure_table() {
 
+	const char* pressureFilename = "/home/pi/p2data/PressureAltitudeChart.csv";
+
+	_altitude_data_fp = fopen(pressureFilename, "r");
+
+	if (_altitude_data_fp == NULL) {
+		printf("Could not find data file: %s\n", pressureFilename);
+
+		exit(EXIT_FAILURE);
+	}
+	else {
+
+	        // Read first line to get initial GPS values
+		int read;
+		int dataPos = 0;
+		char* line = NULL;
+
+		while ((read = getline(&line, &len, _altitude_data_fp)) != -1) {
+
+			if (line) {
+
+				int pos = findChar(line, ',', 0);
+				dataPos = 0;
+
+				if (pos != -1) {
+					line[pos] = '\0';
+					_altitude_table[_altitude_table_size].altitude_meters = atof(&line[dataPos]);
+
+					dataPos = pos + 1;
+                    
+					_altitude_table[_altitude_table_size].speed_meters_per_second = atof(&line[dataPos]);
+				}
+
+				line = NULL;
+				len = 0;
+				_altitude_table_size++;
+
+				free(line);
+			}
+		}
+
+		fclose(_altitude_data_fp);
+	}
+
+}
+ 
 
 void TestStep()
 {
-    _testStepCounter++;
+    printf("Safety Switch: %d\n", _safetySwitchValue);    
+    if (_safetySwitchValue == 0) return;
     
+    
+    _testStepCounter++;
 
     if (_testStepCounter < TEST_STEP_PREP_DELAY_COUNT)
     {
@@ -1881,8 +1935,8 @@ void TestStep()
             _testRiseCount++;
         }
         
-        _balloon_change_lat = (_balloon_starting_position.lat - _balloon_ending_position.lat) / (_testRiseCount + 500);
-        _balloon_change_lon = (_balloon_starting_position.lon - _balloon_ending_position.lon) / (_testRiseCount + 500);
+        _balloon_change_lat = (_balloon_ending_position.lat - _balloon_starting_position.lat) / (_testRiseCount + 500);
+        _balloon_change_lon = (_balloon_ending_position.lon - _balloon_starting_position.lon) / (_testRiseCount + 500);
         
         _testRiseCount += TEST_STEP_PREP_DELAY_COUNT + 2;
         

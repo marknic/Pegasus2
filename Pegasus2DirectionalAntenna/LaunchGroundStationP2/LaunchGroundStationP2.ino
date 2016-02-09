@@ -20,7 +20,7 @@
 #define RADIO_SERIAL_BAUD_RATE                          38400
 #define DIRECTIONAL_ANTENNA_SERIAL_BAUD_RATE            38400
 #define FIELD_GATEWAY_SERIAL_BAUD_RATE                  38400
-#define DEBUG_CONSOLE_SERIAL_BAUD_RATE                 115200
+#define DEBUG_CONSOLE_SERIAL_BAUD_RATE                  38400
 
 
 #define RADIO_MSG_MAX_SIZE                                256
@@ -333,7 +333,7 @@ void get_eeprom_data()
 void setup()
 {
     // Debug Console & external directional antenna controller
-    Serial.begin(38400); // DEBUG_CONSOLE_SERIAL_BAUD_RATE);
+    Serial.begin(DEBUG_CONSOLE_SERIAL_BAUD_RATE);
 
     // Field Gateway
     Serial1.begin(FIELD_GATEWAY_SERIAL_BAUD_RATE);
@@ -381,9 +381,11 @@ void reset_eeprom_values()
 {
     while (digitalRead(GPS_RESET_PIN) == HIGH) { }
 
+    Serial.println("Resetting the location and EEPROM values");
+
     _doOffset = TRUE;
 
-    _launchOffsetDirection = GPS_OFFSET_SE;
+    _launchOffsetDirection = GPS_OFFSET_W;
 
     _launchStationPosition.lat = 0.0;
     _launchStationPosition.lon = 0.0;
@@ -411,6 +413,9 @@ int8_t processCommand(int cmdDataCount) {
                 _launchStationPosition.lat = _balloonPosition.lat;
                 _launchStationPosition.lon = _balloonPosition.lon;
                 _launchStationPosition.alt = _balloonPosition.alt;
+
+                Serial.print("Starting: Lat: "); Serial.print(_launchStationPosition.lat);
+                Serial.print("  Lon: "); Serial.println(_launchStationPosition.lat);
 
                 if (_doOffset) {
                     switch (_launchOffsetDirection) {

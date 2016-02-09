@@ -52,7 +52,7 @@
 
 #define TARGET_DIRECTION_INIT_VALUE    -1.0
 
-#define AZIMUTH_MOVE_PERCENTAGE        0.15
+#define AZIMUTH_MOVE_PERCENTAGE        0.10
 #define ELEVATION_MOVE_PERCENTAGE      0.75
 
 #define FLOAT_EMPTY_FLAG             -999.0
@@ -246,19 +246,20 @@ void init_Sensors()
 
 void initialize_averageDirectionalValues() {
     float tmpAz = 0.0;
-    float tmpEl = 0.0;
+    //float tmpEl = 0.0;
 
     for (int i = 0; i < AVERAGE_COUNT_HEADING; i++){
 
         tmpAz += _compass_sensor.get_heading();
 
-        tmpEl += get_lsm_pitch();
+        //tmpEl += get_lsm_pitch();
 
         delay(50);
     }
    
     _centerDirectionalValues.azimuth = tmpAz / AVERAGE_COUNT_HEADING;
-    _centerDirectionalValues.elevation = tmpEl / AVERAGE_COUNT_HEADING;
+    //_centerDirectionalValues.elevation = tmpEl / AVERAGE_COUNT_HEADING;
+    _centerDirectionalValues.elevation = 0.0;
 
 #ifdef DEBUG_INITIALIZE
     Serial.print(">_centerDirVals.elev: "); Serial.println(_centerDirectionalValues.elevation);
@@ -384,29 +385,6 @@ float calculate_newAzimuthServoPosition(float distanceToMove, float currentPosit
 }
 
 
-//float calculate_elevation_distance(float destinatinoElevation, float currentElevation) {
-//    return currentElevation - destinatinoElevation;
-//}
-
-//float calculate_newElevationServoPosition(float destinatinoElevation, float currentElevation, float currentServoPosition, float* distance) {
-//
-//    float degreesToMove = currentElevation - destinatinoElevation;
-//
-//    *distance = (degreesToMove * ELEVATION_MOVE_PERCENTAGE) * 0.25;
-//
-//#ifdef DEBUG_AZIMUTH
-//    Serial.println("\ncalculate_newElevationServoPosition:");
-//    Serial.print(">>> destinatinoElevation: "); Serial.print(destinatinoElevation);
-//    Serial.print(" -  currentElevation: "); Serial.print(currentElevation);
-//    Serial.print(" -  currentServoPosition: "); Serial.print(currentServoPosition);
-//    Serial.print(" -  distance: "); Serial.print(*distance);
-//    Serial.println();
-//#endif
-//  
-//    return currentServoPosition + *distance;
-//}
-
-
 float smoothData(float dataVal, float lastVal)
 {
     float result;
@@ -451,22 +429,39 @@ void move_servos() {
     float distance;
     bool result;
 
-    float heading = _compass_sensor.get_heading();
-    float pitch = get_lsm_pitch();
+    float heading = 0.0;
+    float pitch = 0.0;
 
-#ifdef DEBUG_SERIAL_COM
+
+    for (int i = 0; i < AVERAGE_COUNT_HEADING; i++) {
+
+        heading += _compass_sensor.get_heading();
+
+        pitch += get_lsm_pitch();
+
+        delay(25);
+    }
+
+    heading = heading / AVERAGE_COUNT_HEADING;
+    pitch = pitch / AVERAGE_COUNT_HEADING;
+
+//#ifdef DEBUG_SERIAL_COM
     Serial.print("heading: "); Serial.print(heading);
-    Serial.print("  -  pitch: "); Serial.print(pitch);
-#endif
+    Serial.print("  -  pitch: "); Serial.println(pitch);
+//#endif
 
     _currentDirectionalValues.azimuth = smoothData(heading, _currentDirectionalValues.azimuth);
     _currentDirectionalValues.elevation = smoothData(pitch, _currentDirectionalValues.elevation);
 
-#ifdef DEBUG_SERIAL_COM
+//#ifdef DEBUG_SERIAL_COM
     Serial.print("  ::  azimuth: "); Serial.print(_currentDirectionalValues.azimuth);
     Serial.print("  -  elevation: "); Serial.print(_currentDirectionalValues.elevation);
     Serial.println();
-#endif
+//#endif
+
+    Serial.print(" Target Az: "); Serial.print(_targetDir.azimuth);
+    Serial.print(" El: "); Serial.print(_targetDir.elevation);
+    Serial.println();
 
     if (_targetDir.azimuth > FLOAT_EMPTY_LIMIT) {
         result = calculate_compassGoto(_centerDirectionalValues.azimuth, _currentDirectionalValues.azimuth, _targetDir.azimuth, &distance);
@@ -635,6 +630,8 @@ void setup() {
 
     Serial.begin(SERIAL_BAUD_RATE);  // start serial for output
 
+    Serial.println("Setup! (DirectionalAntennaDriver)");
+
     delay(100);
 
     Wire.begin();
@@ -684,7 +681,7 @@ void setup() {
     watchdogSetup();
 
     _timer.every(1000, watchdog_reset);
-    _timer.every(150, move_servos);
+    _timer.every(250, move_servos);
 
 #ifdef DEBUG_INITIALIZE
     Serial.println(" Initialization Complete.");
@@ -741,10 +738,11 @@ void loop() {
                     // MESSAGE Structure:  |###.#,###.#\n
                     _az_el_msg[6] = '\0';
                 
-                    //Serial.println("CHANGING AZIMUTH/ELEVATION...");
+                    Serial.println("CHANGING AZIMUTH/ELEVATION...");
 
                     _targetDir.azimuth = atof(&_az_el_msg[1]);
                     _targetDir.elevation = atof(&_az_el_msg[7]);
+
 
 #ifdef DEBUG_SERIAL_COM
                     Serial.print(" Az: "); Serial.print(_targetDir.azimuth);
