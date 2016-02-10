@@ -40,7 +40,7 @@
 #define COMMAND_ARRAY_LEN                                   3
 
 #define TMP_36_PIN                                         A0
-#define GPS_RESET_PIN                                      31
+#define GPS_RESET_PIN                                      36
 #define REFERENCE_VOLTAGE                                 5.0
 #define ADC_COUNT                                      1024.0
 #define VOLTAGE_RATIO          (REFERENCE_VOLTAGE / ADC_COUNT)
@@ -120,8 +120,8 @@ void send_data_to_video_antenna() {
     char az[6];
     char el[6];
 
-    //Serial.print("calc'd az: "); Serial.print(_calculatedValuesBalloon.azimuth);
-    //Serial.print("calc'd el: "); Serial.print(_calculatedValuesBalloon.elevation);
+    Serial.print("calc'd az: "); Serial.print(_calculatedValuesBalloon.azimuth);
+    Serial.print("calc'd el: "); Serial.print(_calculatedValuesBalloon.elevation);
 
     if ((_calculatedValuesBalloon.azimuth >= 0.0) && (_calculatedValuesBalloon.azimuth <= 360.0)) {
         if ((_calculatedValuesBalloon.azimuth >= -20.0) && (_calculatedValuesBalloon.elevation <= 90.0)) {
@@ -348,7 +348,7 @@ void setup()
     // Video Directional Antenna
     Serial3.begin(DIRECTIONAL_ANTENNA_SERIAL_BAUD_RATE);
 
-    pinMode(GPS_RESET_PIN, INPUT);
+    //pinMode(GPS_RESET_PIN, INPUT);
 
     get_eeprom_data();
 
@@ -367,7 +367,7 @@ void setup()
     Serial.print(_launchOffsetDirection);
     Serial.println();
 
-    delay(15000);
+    delay(12000);
 
     watchdogSetup();
 
@@ -377,15 +377,13 @@ void setup()
 }
 
 
-void reset_eeprom_values()
+void reset_eeprom_values(int direction)
 {
-    while (digitalRead(GPS_RESET_PIN) == HIGH) { }
-
     Serial.println("Resetting the location and EEPROM values");
 
     _doOffset = TRUE;
 
-    _launchOffsetDirection = GPS_OFFSET_W;
+    _launchOffsetDirection = direction;
 
     _launchStationPosition.lat = 0.0;
     _launchStationPosition.lon = 0.0;
@@ -393,7 +391,10 @@ void reset_eeprom_values()
 
     EEPROM.put(LAT_LON_EEPROM_ADDRESS, _launchStationPosition);
     EEPROM.put(GBANG_DO_OFFSET_ADDRESS, _doOffset);
-    EEPROM.put(GBANG_OFFSET_DIRECTION_ADDRESS, 0xff);
+
+    _launchOffsetDirection = direction;
+    EEPROM.put(GBANG_OFFSET_DIRECTION_ADDRESS, _launchOffsetDirection);
+
 }
 
 
@@ -406,6 +407,7 @@ int8_t processCommand(int cmdDataCount) {
     Serial.println("Command Received: "); Serial.println(_radioMessageOut);
 
     if (_radioMessageOut[0] == COMMAND_INDICATOR_CHAR) {
+
         if ((_radioMessageOut[1] == 'G') || (_radioMessageOut[1] == 'g')) {
 
             if (_radioMessageOut[3] == '!') {
@@ -461,8 +463,7 @@ int8_t processCommand(int cmdDataCount) {
                 Serial.println("Writing to EEPROM!");
 
                 EEPROM.put(LAT_LON_EEPROM_ADDRESS, _launchStationPosition);
-                EEPROM.put(GBANG_OFFSET_DIRECTION_ADDRESS, _launchOffsetDirection);
-
+                
                 Serial.print("EE Lat: "); Serial.print(_launchStationPosition.lat);
                 Serial.print("EE Lon: "); Serial.print(_launchStationPosition.lon);
                 Serial.print("EE Alt: "); Serial.print(_launchStationPosition.alt);
@@ -495,8 +496,6 @@ int8_t processCommand(int cmdDataCount) {
 
                 EEPROM.put(LAT_LON_EEPROM_ADDRESS, _launchStationPosition);
                 EEPROM.put(GBANG_DO_OFFSET_ADDRESS, _doOffset);
-                EEPROM.put(GBANG_OFFSET_DIRECTION_ADDRESS, 0xff);
-
             }
         }
         else {
@@ -517,7 +516,7 @@ int8_t processCommand(int cmdDataCount) {
             }
         }
 
-    }
+    } 
 
     return commandValid;
 }
@@ -528,13 +527,6 @@ int8_t processCommand(int cmdDataCount) {
 void loop()
 {
     _timer.update();
-
-    // If the button is pressed, reset the local GPS (EEPROM) data
-    if (digitalRead(GPS_RESET_PIN) == HIGH)
-    {
-        reset_eeprom_values();
-    }
-    
 
 
     // Field Gateway
@@ -614,17 +606,17 @@ void loop()
 
             _radioMsgInCount = RADIO_MSG_OFFSET_INIT;
 
-            if (_messageValidator.validateMessage(_radioMessageIn)) {
+            if (_messageValidator.validateMessage(_radioMessageIn) != -1) {
 
                 //if (!_realTimeClockSet) {
                     if (_radioMessageIn[0] == TELEMETRY_INDICATOR_CHAR) {
-                        second = (byte) ((_radioMessageIn[19] - 48) * 10 + (_radioMessageIn[20] - 48));
-                        minute = (byte) ((_radioMessageIn[16] - 48) * 10 + (_radioMessageIn[17] - 48));
-                        hour = (byte) ((_radioMessageIn[13] - 48) * 10 + (_radioMessageIn[14] - 48));
-                        //dayOfWeek = (byte) 0;
-                        day = (byte) ((_radioMessageIn[10] - 48) * 10 + (_radioMessageIn[11] - 48));
-                        month = (byte) ((_radioMessageIn[7] - 48) * 10 + (_radioMessageIn[8] - 48));
-                        year = (byte) ((_radioMessageIn[4] - 48) * 10 + (_radioMessageIn[5] - 48));
+                        second = (uint8_t) ((_radioMessageIn[19] - 48) * 10 + (_radioMessageIn[20] - 48));
+                        minute = (uint8_t) ((_radioMessageIn[16] - 48) * 10 + (_radioMessageIn[17] - 48));
+                        hour = (uint8_t) ((_radioMessageIn[13] - 48) * 10 + (_radioMessageIn[14] - 48));
+                        //dayOfWeek = (uint8_t) 0;
+                        day = (uint8_t) ((_radioMessageIn[10] - 48) * 10 + (_radioMessageIn[11] - 48));
+                        month = (uint8_t) ((_radioMessageIn[7] - 48) * 10 + (_radioMessageIn[8] - 48));
+                        year = (uint8_t) ((_radioMessageIn[4] - 48) * 10 + (_radioMessageIn[5] - 48));
 
                     }
                 //}
@@ -635,12 +627,23 @@ void loop()
                     strcpy(_commandTemp, _radioMessageIn);
 
                     if (splitCommandData(_commandTemp) == DATA_ARRAY_LEN) {
+                        
                         _balloonPosition.lat = atof(_commandDataReceived[POS_LAT]);
                         _balloonPosition.lon = atof(_commandDataReceived[POS_LON]);
                         _balloonPosition.alt = atof(_commandDataReceived[POS_ALT]);
 
-                        if (!((_launchStationPosition.lat == 0.0) || (_balloonPosition.lat == 0.0) || (_launchStationPosition.lon == 0.0) || (_balloonPosition.lon == 0.0))) {
+
+                        Serial.print("Launch:  Lat: "); Serial.print(_launchStationPosition.lat, 6);
+                        Serial.print("  -- Lon: "); Serial.print(_launchStationPosition.lon, 6);
+                        Serial.print("Balloon:  Lat: "); Serial.print(_balloonPosition.lat, 6);
+                        Serial.print("  -- Lon: "); Serial.println(_balloonPosition.lon, 6);
+
+                        if ((_launchStationPosition.lat != 0.0) && (_balloonPosition.lat != 0.0) && (_launchStationPosition.lon != 0.0) || (_balloonPosition.lon != 0.0)) {
+
                             Calculate(_launchStationPosition, _balloonPosition, &_calculatedValuesBalloon);
+
+                            Serial.print("AZ: "); Serial.print(_calculatedValuesBalloon.azimuth);
+                            Serial.print("  --  EL: "); Serial.println(_calculatedValuesBalloon.elevation);
 
                             if (_calculatedValuesBalloon.elevation < -0.0) {
                                 _calculatedValuesBalloon.elevation = 0.0;
@@ -683,21 +686,29 @@ void loop()
         _antennaControllerMsg[_antennaMsgCount] = incomingByte;
 
         if ((incomingByte == '\n') || (incomingByte == '\\') || (incomingByte == '|')) {
-
+            
             _antennaControllerMsg[_antennaMsgCount] = 0;
             _antennaMsgCount = ANTENNA_MSG_OFFSET_INIT;
+
+            //Serial.print(">>>>>>>  '");
+            //Serial.print(_antennaControllerMsg);
+            //Serial.println("'");
+
 
             // If the _launchOffsetDirection hasn't been stored in EEPROM
             if (_launchOffsetDirection == 0xff) {
 
                 int msgLen = strlen(_antennaControllerMsg);
 
+                //Serial.print("msgLen:"); Serial.println(msgLen);
+
                 // Message format: "|H:###.#\n"
-                if ((msgLen == ANTENNA_MSG_EXPECTED_LEN) && (_antennaControllerMsg[0] == '|') && (_antennaControllerMsg[1] == 'H') &&
-                    (_antennaControllerMsg[2] == ':') && (_antennaControllerMsg[6] == '.')) {
+                if ((msgLen == ANTENNA_MSG_EXPECTED_LEN) && (_antennaControllerMsg[0] == 'H') && (_antennaControllerMsg[1] == ':')) {
 
                     // Valid msg
                     float heading = atof(&_antennaControllerMsg[3]);
+
+                    //Serial.print("Default Heading Received From Antenna Driver: "); Serial.println(heading);
 
                     if (heading <= 22.5) {
                         _launchOffsetDirection = GPS_OFFSET_N;
@@ -726,6 +737,10 @@ void loop()
                     else {
                         _launchOffsetDirection = GPS_OFFSET_N;
                     }
+
+                    reset_eeprom_values(_launchOffsetDirection);
+
+                    Serial.print("NEW LAUNCH OFFSET DIRECTION: "); Serial.println(_launchOffsetDirection);
                 }
             }
         }
@@ -745,7 +760,12 @@ void loop()
 
         if (incomingByte == COMMAND_INDICATOR_CHAR) {
             _radioMsgInCount = RADIO_MSG_OFFSET_INIT;
-            Serial.println("Caught a command coming in!!!");
+            //Serial.println("Caught a command coming in!!!");
+        }
+
+        if (incomingByte == '|') {
+            _radioMsgInCount = RADIO_MSG_OFFSET_INIT;
+            //Serial.println("Message to Antenna Driver!");
         }
 
         _radioMsgInCount++;
@@ -753,7 +773,7 @@ void loop()
         if (_radioMsgInCount >= RADIO_MSG_MAX_OFFSET) {
             _radioMsgInCount = RADIO_MSG_OFFSET_INIT;
 
-            Serial.print("#Data 2 Error: msg > "); Serial.print(RADIO_MSG_MAX_SIZE); Serial.println(" bytes");
+            //Serial.print("#Data 2 Error: msg > "); Serial.print(RADIO_MSG_MAX_SIZE); Serial.println(" bytes");
         }
 
         _radioMessageIn[_radioMsgInCount] = incomingByte;
@@ -762,11 +782,12 @@ void loop()
 
             _radioMessageIn[_radioMsgInCount] = 0;
 
-            Serial.println(_radioMessageIn);
+            //Serial.print("_radioMessageIn: ");
+            //Serial.println(_radioMessageIn);
 
             _radioMsgInCount = RADIO_MSG_OFFSET_INIT;
 
-            if (_messageValidator.validateMessage(_radioMessageIn)) {
+            if (_messageValidator.validateMessage(_radioMessageIn) != -1) {
 
                 // Received telemetry so pull out lat/lon/alt for positioning
                 if (_radioMessageIn[0] == TELEMETRY_INDICATOR_CHAR){
@@ -774,6 +795,7 @@ void loop()
                     strcpy(_commandTemp, _radioMessageIn);
 
                     int count = splitCommandData(_commandTemp);
+                    Serial.print("Data Array Count: "); Serial.println(count);
 
                     if (count == DATA_ARRAY_LEN) {
                         
@@ -849,10 +871,17 @@ void loop()
                 //// Debugging...
                 //Serial.println(_radioMessageIn);
             }
+            else
+            {
+                Serial.println(_radioMessageIn);
+
+                if (!strcmp(_radioMessageIn, "H!"))
+                {
+                    Serial3.println("|H!");
+                }
+            }
         }
     }
-
-
 
     delay(10);
 }

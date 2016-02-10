@@ -124,10 +124,10 @@
     <ClInclude Include="units.h" />
   </ItemGroup>
   <ItemGroup>
-    <Text Include="P2CraftTestTelemtry.txt">
+    <Text Include="AltitudePressureChart.txt">
       <DeploymentContent>true</DeploymentContent>
     </Text>
-    <Text Include="PressureAltitudeChart.txt">
+    <Text Include="P2CraftTestTelemtry.txt">
       <DeploymentContent>true</DeploymentContent>
     </Text>
     <Text Include="ProjectedGpsLocation.txt">

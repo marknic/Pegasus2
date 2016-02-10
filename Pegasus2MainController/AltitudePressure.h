@@ -1,21 +1,21 @@
 #pragma once
 
-
+#define ALT_PRESS_ARRAY_COUNT  8721
 
 class AltitudePressure
 {
 private:
-	int _altitude[8721];
-	double _pressure[8721];
-	int _totalCount = 0;
-	int _currentPointer = 0;
-	int _currentAltitude = 0;
-	
+    int _altitude[ALT_PRESS_ARRAY_COUNT];
+    double _pressure[ALT_PRESS_ARRAY_COUNT];
+    int _totalCount;
+    int _currentPointer;
+    int _currentAltitude;
+    
 public:
     AltitudePressure();
     ~AltitudePressure();
-	
-	void addValues(int altitude, double pressure);
-	double getPressure(int altitude);
+    
+    void addValues(int altitude, double pressure);
+    double getPressure(int altitude);
 };
 

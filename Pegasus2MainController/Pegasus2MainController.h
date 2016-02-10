@@ -121,8 +121,8 @@
 
 
 #define DEFAULT_SECONDS_TILL_RELEASE (150 * 60)   // 2.5 hours
-#define DEFAULT_ALTITUDE_FOR_DEPLOY        2000   // meters above launch height
-#define DEFAULT_ALTITUDE_FOR_ARMING        3000   // meters above launch height
+#define DEFAULT_ALTITUDE_FOR_DEPLOY        5600   // meters above launch height
+//#define DEFAULT_ALTITUDE_FOR_ARMING        3000   // meters above launch height
 
 #define FALL_LIMIT_SPEED                (-12.5)   // Speed the balloon must achieve to indicate a fall
 #define DEFAULT_PARACHUTE_DECENT_RATE       5.0
@@ -158,7 +158,7 @@
 
 #define TEST_TARGET_ALTITUDE_METERS       30480
 
-#define TEST_ASCENT_RATE_MULTIPLIER          40
+#define TEST_ASCENT_RATE_MULTIPLIER           40
 
 
 #endif 

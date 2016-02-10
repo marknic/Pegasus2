@@ -18,6 +18,7 @@
 #include <math.h>
 #include <sys/stat.h> /* struct stat, fchmod (), stat (), S_ISREG, S_ISDIR */
 #include <sys/time.h>
+#include "AltitudePressure.h"
 //#include <stdio.h>
 
 
@@ -217,6 +218,9 @@ FILE* _altitude_data_fp;
 int _testStepCounter = 0;
 int _testRiseCount;
 
+AltitudePressure  _altitudePressure;
+
+
 int get_altitude_index(double altitude);
 void TestStep();
 
@@ -322,6 +326,7 @@ void evaluate_data() {
         if ((_craft_notes_flags[ABOVE_TRAFFIC_POS] == CRAFT_MESSAGE_NOT_SENT) && (_current_altitude > ALTITUDE_ABOVE_TRAFFIC)) {
             send_craft_message(ABOVE_TRAFFIC_POS, MESSAGE_NO_VALUE);
             _subProc3.send_command(PROC3_COMMAND_ABOVE_TRAFFIC);
+            switch_leds(FALSE);   
         }
 
         if ((_craft_notes_flags[STRATOSPHERE_POS] == CRAFT_MESSAGE_NOT_SENT) && (_current_altitude > ALTITUDE_STRATOSPHERE)) {
@@ -1062,8 +1067,8 @@ void send_telemetry() {
 
     if (_safetySwitchValue)
     {
+        _warmupPeriodOver = TRUE;
         
-    
         switch (_balloon_state) {
 
         case BALLOON_PREP:
@@ -1114,7 +1119,7 @@ void send_telemetry() {
 
         case PARACHUTE_DEPLOYED:
 
-            _current_altitude -= DEFAULT_PARACHUTE_DECENT_RATE;
+            _current_altitude -= (DEFAULT_PARACHUTE_DECENT_RATE * 2);
 
             if (_current_altitude < _ground_altitude) {
                 _current_altitude = _ground_altitude;
@@ -1129,6 +1134,8 @@ void send_telemetry() {
         }
 
     }
+    
+    pressure = _altitudePressure.getPressure(_current_altitude);
     
     sprintf(_gpsDataString1, "%7.5f,%7.5f,%3.1f,%3.1f,%3.1f,%d,%d",
         _balloon_current_position.lat,
@@ -1230,10 +1237,10 @@ sprintf(sensorData, "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s",
         format_timestamp(_timestamp),                                               //  1 - timestamp
         pressure,                                                                   //  2 - air pressure
         _current_altitude,                                                          //  3 - altitude
-        pressureTemp,                                                               //  4 - pressure temp
+		tmp36,                                                                      //  4 - pressure temp
         humidity,                                                                   //  5 - humidity
 
-        tmp36,                                                                      //  6 - temp in
+		pressureTemp,                                                               //  6 - temp in
         thermoCouple,                                                               //  7 - temp out
         voltageMain,                                                                //  8 - main battery voltage
         voltageAux,                                                                 //  9 - aux battery voltage
@@ -1532,6 +1539,8 @@ int deploy_parachute_now() {
     sprintf(_tmp_log_data, "Deploy Parachute: %d", counter);
 
     write_to_log("BAP", _tmp_log_data);
+    
+    switch_leds(TRUE);
 
 #if (TEST_TELEMETRY)
     
@@ -1792,20 +1801,6 @@ int get_altitude_index(double altitude) {
     return -1;
 }
 
-//double get_current_altitude(double altitude, bool falling) {
-//
-    //static bool is_falling = false;
-//
-    //if (!is_falling && falling) {  // just started falling
-//
-        ////int x = asdf;
-        //is_falling = TRUE;
-        //
-        //
-    //}
-//
-//}
-
 
 void load_altitude_table() {
 
@@ -1855,51 +1850,51 @@ void load_altitude_table() {
 }
  
 
-
 void load_pressure_table() {
 
-	const char* pressureFilename = "/home/pi/p2data/PressureAltitudeChart.csv";
+    const char* pressureFilename = "/home/pi/p2data/AltitudePressureChart.txt";
 
-	_altitude_data_fp = fopen(pressureFilename, "r");
+    FILE* fp = fopen(pressureFilename, "r");
 
-	if (_altitude_data_fp == NULL) {
-		printf("Could not find data file: %s\n", pressureFilename);
+    if (fp == NULL) {
+        printf("Could not find data file: %s\n", pressureFilename);
 
-		exit(EXIT_FAILURE);
-	}
-	else {
+        exit(EXIT_FAILURE);
+    }
+    else {
+            // Read first line to get initial GPS values
+        int read;
+        int dataPos = 0;
+        char* line = NULL;
 
-	        // Read first line to get initial GPS values
-		int read;
-		int dataPos = 0;
-		char* line = NULL;
+        while ((read = getline(&line, &len, fp)) != -1) {
 
-		while ((read = getline(&line, &len, _altitude_data_fp)) != -1) {
+            if (line) {
 
-			if (line) {
+                int pos = findChar(line, ',', 0);
+                dataPos = 0;
 
-				int pos = findChar(line, ',', 0);
-				dataPos = 0;
-
-				if (pos != -1) {
-					line[pos] = '\0';
-					_altitude_table[_altitude_table_size].altitude_meters = atof(&line[dataPos]);
-
-					dataPos = pos + 1;
+                if (pos != -1) {
+                    line[pos] = '\0';
                     
-					_altitude_table[_altitude_table_size].speed_meters_per_second = atof(&line[dataPos]);
-				}
+                    int alt = atoi(&line[dataPos]);
 
-				line = NULL;
-				len = 0;
-				_altitude_table_size++;
+                    dataPos = pos + 1;
+                    
+                    double pressure = atof(&line[dataPos]);
 
-				free(line);
-			}
-		}
+                    _altitudePressure.addValues(alt, pressure);
+                }
 
-		fclose(_altitude_data_fp);
-	}
+                line = NULL;
+                len = 0;
+
+                free(line);
+            }
+        }
+
+        fclose(fp);
+    }
 
 }
  
@@ -1908,7 +1903,6 @@ void TestStep()
 {
     printf("Safety Switch: %d\n", _safetySwitchValue);    
     if (_safetySwitchValue == 0) return;
-    
     
     _testStepCounter++;
 
@@ -1935,8 +1929,8 @@ void TestStep()
             _testRiseCount++;
         }
         
-        _balloon_change_lat = (_balloon_ending_position.lat - _balloon_starting_position.lat) / (_testRiseCount + 500);
-        _balloon_change_lon = (_balloon_ending_position.lon - _balloon_starting_position.lon) / (_testRiseCount + 500);
+        _balloon_change_lat = (_balloon_ending_position.lat - _balloon_starting_position.lat) / (_testRiseCount + 300);
+        _balloon_change_lon = (_balloon_ending_position.lon - _balloon_starting_position.lon) / (_testRiseCount + 300);
         
         _testRiseCount += TEST_STEP_PREP_DELAY_COUNT + 2;
         
@@ -1950,7 +1944,7 @@ void TestStep()
     
     if (_testStepCounter == _testRiseCount)  //3043)
     {
-        release_balloon_now();
+        //release_balloon_now();
 
         return;
     }
@@ -2047,7 +2041,7 @@ int test_uart_streams(char uartNumber)
     UartStream* _serialStream_Test = new UartStream(uartNumber); //, process_radio_data, FALSE, "test");
     
     char tstBuffer[1024];
-    
+    int result = 0;
     
     usleep(1000000);
     
@@ -2061,18 +2055,20 @@ int test_uart_streams(char uartNumber)
             
             if ((tstBuffer[0] == '$') && (tstBuffer[1] == 'G') && (tstBuffer[2] == 'P'))
             {
-                return IS_GPS;
+                result = IS_GPS;
             }
             else
             {
-                return IS_PROC2;				
+                result = IS_PROC2;				
             }
         }
     }
     
     _serialStream_Test->closeFileStream();
     
-    return 0;
+    delete _serialStream_Test;
+    
+    return result;
 }
         
 
@@ -2141,6 +2137,8 @@ int main(int argc, char *argv [])
     // Load Altitude table for testing - Contains data to simulate falling. 
     //  Rising is handled through simple addition of a constant rise rate.
     load_altitude_table();
+    
+    load_pressure_table();
 
     // Zero out starting and ending positions 
     _balloon_starting_position.lat = 0.0;

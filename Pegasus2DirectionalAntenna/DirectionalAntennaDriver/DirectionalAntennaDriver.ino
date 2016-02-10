@@ -445,23 +445,23 @@ void move_servos() {
     heading = heading / AVERAGE_COUNT_HEADING;
     pitch = pitch / AVERAGE_COUNT_HEADING;
 
-//#ifdef DEBUG_SERIAL_COM
+#ifdef DEBUG_SERIAL_COM
     Serial.print("heading: "); Serial.print(heading);
     Serial.print("  -  pitch: "); Serial.println(pitch);
-//#endif
+#endif
 
     _currentDirectionalValues.azimuth = smoothData(heading, _currentDirectionalValues.azimuth);
     _currentDirectionalValues.elevation = smoothData(pitch, _currentDirectionalValues.elevation);
 
-//#ifdef DEBUG_SERIAL_COM
+#ifdef DEBUG_SERIAL_COM
     Serial.print("  ::  azimuth: "); Serial.print(_currentDirectionalValues.azimuth);
     Serial.print("  -  elevation: "); Serial.print(_currentDirectionalValues.elevation);
     Serial.println();
-//#endif
 
     Serial.print(" Target Az: "); Serial.print(_targetDir.azimuth);
     Serial.print(" El: "); Serial.print(_targetDir.elevation);
     Serial.println();
+#endif
 
     if (_targetDir.azimuth > FLOAT_EMPTY_LIMIT) {
         result = calculate_compassGoto(_centerDirectionalValues.azimuth, _currentDirectionalValues.azimuth, _targetDir.azimuth, &distance);
@@ -630,7 +630,7 @@ void setup() {
 
     Serial.begin(SERIAL_BAUD_RATE);  // start serial for output
 
-    Serial.println("Setup! (DirectionalAntennaDriver)");
+    //Serial.println("Setup! (DirectionalAntennaDriver)");
 
     delay(100);
 
@@ -738,7 +738,7 @@ void loop() {
                     // MESSAGE Structure:  |###.#,###.#\n
                     _az_el_msg[6] = '\0';
                 
-                    Serial.println("CHANGING AZIMUTH/ELEVATION...");
+                    //Serial.println("CHANGING AZIMUTH/ELEVATION...");
 
                     _targetDir.azimuth = atof(&_az_el_msg[1]);
                     _targetDir.elevation = atof(&_az_el_msg[7]);

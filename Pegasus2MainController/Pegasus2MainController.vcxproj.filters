@@ -185,6 +185,6 @@
   <ItemGroup>
     <Text Include="P2CraftTestTelemtry.txt" />
     <Text Include="ProjectedGpsLocation.txt" />
-    <Text Include="PressureAltitudeChart.txt" />
+    <Text Include="AltitudePressureChart.txt" />
   </ItemGroup>
 </Project>

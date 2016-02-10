@@ -4,6 +4,10 @@
 
 AltitudePressure::AltitudePressure()
 {
+	int _totalCount = 0;
+	int _currentPointer = 0;
+	int _currentAltitude = 0;
+
 }
 
 
@@ -38,5 +42,10 @@ double AltitudePressure::getPressure(int altitude)
 		_currentPointer++;
 	}
 	
+	if (_currentPointer < 0) return 0.0;
+	if (_currentPointer >= ALT_PRESS_ARRAY_COUNT) return 0.0;
 	
+	_currentAltitude = _altitude[_currentPointer];
+	
+	return _pressure[_currentPointer];
 }

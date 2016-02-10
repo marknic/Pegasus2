@@ -34,7 +34,7 @@ error:
 	$(error Invalid configuration, please check your inputs)
 endif
 
-SOURCEFILES := AltitudeCalc.cpp AltitudePressureValues.cpp context.c Event.cpp generate.c generator.c gmath.c GpioCtrl.cpp GpsData.cpp GpsProcessor.cpp I2CTransfer.cpp info.c MessageValidation.cpp parse.c parser.c Pegasus2MainController.cpp sentence.c time.c Timer.cpp tok.c UartStream.cpp
+SOURCEFILES := AltitudeCalc.cpp AltitudePressure.cpp AltitudePressureValues.cpp context.c Event.cpp generate.c generator.c gmath.c GpioCtrl.cpp GpsData.cpp GpsProcessor.cpp I2CTransfer.cpp info.c MessageValidation.cpp parse.c parser.c Pegasus2MainController.cpp sentence.c time.c Timer.cpp tok.c UartStream.cpp
 EXTERNAL_LIBS := 
 EXTERNAL_LIBS_COPIED := $(foreach lib, $(EXTERNAL_LIBS),$(BINARYDIR)/$(notdir $(lib)))
 
