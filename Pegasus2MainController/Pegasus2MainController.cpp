@@ -110,25 +110,27 @@ uint8_t _craft_notes_flags[CRAFT_NOTE_COUNT] = {
     CRAFT_MESSAGE_NOT_SENT, CRAFT_MESSAGE_NOT_SENT, CRAFT_MESSAGE_NOT_SENT, CRAFT_MESSAGE_NOT_SENT, 
     CRAFT_MESSAGE_NOT_SENT, CRAFT_MESSAGE_NOT_SENT, CRAFT_MESSAGE_NOT_SENT, CRAFT_MESSAGE_NOT_SENT, 
     CRAFT_MESSAGE_NOT_SENT, CRAFT_MESSAGE_NOT_SENT, CRAFT_MESSAGE_NOT_SENT, CRAFT_MESSAGE_NOT_SENT, 
-    CRAFT_MESSAGE_MULTISEND, CRAFT_MESSAGE_MULTISEND, CRAFT_MESSAGE_MULTISEND, CRAFT_MESSAGE_MULTISEND };
+    CRAFT_MESSAGE_MULTISEND, CRAFT_MESSAGE_MULTISEND, CRAFT_MESSAGE_MULTISEND, CRAFT_MESSAGE_MULTISEND,
+    CRAFT_MESSAGE_NOT_SENT};
 
 char _craft_notes[CRAFT_NOTE_COUNT][CRAFT_NOTE_TEXT_LENGTH] = {
     "}N:PII - Liftoff - Pegasus 2 is Flying",
     "}N:PII - Safe Mode",
-    "}N:PII - Above Air Traffic (40,000')",
-    "}N:PII - Curvature Seen (65,000')",
-    "}N:PII - Goal Altitude Reached! (100,000')",
+    "}N:PII - Above Air Traffic (40000')",
+    "}N:PII - Curvature Seen (65000')",
+    "}N:PII - Goal Altitude Reached! (100000')",
     "}N:PII - Balloon Released-Falling!",
     "}N:PII - Parachute Deployed",
-    "}N:PII - I can see my house! (Half-way Point: 50,000')",
-    "}N:PII - Reached Stratosphere! (Roughly: 33,000')",
+    "}N:PII - I can see my house! (Half-way Point: 50000')",
+    "}N:PII - Reached Stratosphere! (Roughly: 33000')",
     "}N:PII - Diving over 200MPH!",
     "}N:PII - Screaming over 250MPH!",
     "}N:PII - Plummeting over 300MPH!",
     "}N:PII - Minutes to Autorelease Set to: %d min",
     "}N:PII - Autodeploy Altitude Set to: %d'",
     "}N:PII - UFO Lights On",
-    "}N:PII - UFO Lights Off"
+    "}N:PII - UFO Lights Off",
+    "}N:PII - Reached altitude of Pegasus-I and still going."
 };
 
 
@@ -347,6 +349,11 @@ void evaluate_data() {
             _subProc3.send_command(PROC3_COMMAND_REACHED_GOAL);
         }
 
+        if ((_craft_notes_flags[PEGASUS_I_POS] == CRAFT_MESSAGE_NOT_SENT) && (_current_altitude >= ALTITUDE_PEGASUS_I)) {
+            send_craft_message(PEGASUS_I_POS, MESSAGE_NO_VALUE);
+        }
+        
+        
         if ((messagesDisplayed[0] == 0) && (_current_altitude > 20000)) {
             debug_print("evaluate_data: altitude above 20000 sending cmd 3");
             messagesDisplayed[0] = 1;
@@ -943,10 +950,7 @@ void write_to_log(const char* source, char* data) {
 }
 
 
-/**
-* \fn switch_leds
-* \brief Turn LED Signal lights on or off
-*/
+
 void get_m1_data() {
 
     get_subproc1_sensor_data();
@@ -1237,10 +1241,10 @@ sprintf(sensorData, "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s",
         format_timestamp(_timestamp),                                               //  1 - timestamp
         pressure,                                                                   //  2 - air pressure
         _current_altitude,                                                          //  3 - altitude
-		tmp36,                                                                      //  4 - pressure temp
+        pressureTemp,                                                               //  4 - pressure temp
         humidity,                                                                   //  5 - humidity
 
-		pressureTemp,                                                               //  6 - temp in
+        tmp36,                                                                      //  6 - temp in
         thermoCouple,                                                               //  7 - temp out
         voltageMain,                                                                //  8 - main battery voltage
         voltageAux,                                                                 //  9 - aux battery voltage
@@ -2094,44 +2098,15 @@ int main(int argc, char *argv [])
     sprintf(_lastGpsDataString, "%7.5f,%7.5f,%3.1f,%3.1f,%3.1f,%d,%d",
         0.0, 0.0, 0.0, 0.0, 0.0, 0, 0);
 
-    switch_leds(FALSE);
+    //switch_leds(FALSE);
+    _subProc3.send_command(PROC3_COMMAND_LEDS_OFF);
     
     display_user_message("Testing...");
     
     _subProc1.send_command(PROC3_COMMAND_RESET);
-    //rotate_video_camera('U');
     
     _subProc1.send_command(PROC1_COMMAND_RESET_SERVOS);
     
-    
-    //display_user_message("Hello, I am testing you.  Please work!");
-    //
-    //_subProc3.send_command(3);
-    //_subProc3.send_command(4);
-    //_subProc3.send_command(5);
-    //_subProc3.send_command(6);
-    //_subProc3.send_command(7);
-    //_subProc3.send_command(8);
-    //_subProc3.send_command(9);
-    //
-    //
-    //deploy_parachute_now();
-    //
-    //release_balloon_now();
-    //
-    //rotate_video_camera('U');
-    //
-    //
-    //_subProc1.send_command(PROC1_COMMAND_RESET_SERVOS);
-    //
-    //
-    //
-    //deploy_parachute_now();
-    //
-    //release_balloon_now();
-//
-    //_subProc1.send_command(PROC1_COMMAND_RESET_SERVOS);
-
 #if (TEST_TELEMETRY)
 
     // Load Altitude table for testing - Contains data to simulate falling. 

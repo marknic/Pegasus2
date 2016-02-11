@@ -16,7 +16,7 @@
 #define PACKET_LENGTH                        32
 #define SIZES_PACKET_LENGTH                   3
                                           
-#define CRAFT_NOTE_COUNT                     16
+#define CRAFT_NOTE_COUNT                     17
 #define CRAFT_NOTE_TEXT_LENGTH               60
 #define LIFTOFF_POS                           0
 #define SAFE_MODE_POS                         1
@@ -34,6 +34,7 @@
 #define AUTODEPLOY_HEIGHT_POS                13
 #define LIGHTS_ON_POS                        14
 #define LIGHTS_OFF_POS                       15
+#define PEGASUS_I_POS                        16
                                           
 #define CRAFT_MESSAGE_NOT_SENT                0
 #define CRAFT_MESSAGE_SENT                    1
@@ -113,15 +114,16 @@
 #define PROC2_DATA_COUNT                     14
 #define PROC1_DATA_COUNT                     12
 
-#define ALTITUDE_STRATOSPHERE             13106   // 43,000 ft.
+#define ALTITUDE_STRATOSPHERE             10058   // 33,000 ft.
 #define ALTITUDE_ABOVE_TRAFFIC            12192   // 40,000 ft.
 #define ALTITUDE_I_CAN_SEE                15240   // 50,000 ft.
-#define ALTITUDE_CURVATURE                16764   // 65,000 ft.
+#define ALTITUDE_CURVATURE                19812   // 65,000 ft.
+#define ALTITUDE_PEGASUS_I                25908   // 85,000 ft.
 #define ALTITUDE_GOAL                     30480   // 100,000 ft.
 
 
 #define DEFAULT_SECONDS_TILL_RELEASE (150 * 60)   // 2.5 hours
-#define DEFAULT_ALTITUDE_FOR_DEPLOY        5600   // meters above launch height
+#define DEFAULT_ALTITUDE_FOR_DEPLOY        1700   // meters above launch height
 //#define DEFAULT_ALTITUDE_FOR_ARMING        3000   // meters above launch height
 
 #define FALL_LIMIT_SPEED                (-12.5)   // Speed the balloon must achieve to indicate a fall
@@ -158,7 +160,7 @@
 
 #define TEST_TARGET_ALTITUDE_METERS       30480
 
-#define TEST_ASCENT_RATE_MULTIPLIER           40
+#define TEST_ASCENT_RATE_MULTIPLIER           1 //40
 
 
 #endif 
