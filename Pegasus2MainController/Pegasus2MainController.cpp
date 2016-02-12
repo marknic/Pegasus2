@@ -40,6 +40,7 @@ int send_craft_message(int index, int value);
 char* format_timestamp(char* timestampDest);
 char* format_timestamp_with_milliseconds(char* timestampDest);
 void write_to_log(const char* source, char* data);
+void write_to_log_nl(const char* source, char* data);
 char* integrate_real_telemetry(char* dataIn);
 int release_balloon_now();
 int deploy_parachute_now();
@@ -154,7 +155,7 @@ int _telemetry_count = 0;
 MessageValidation _messageValidator;
 
 
-char _proc1SensorBuffer[GENERAL_BUFFER_LEN];
+char _proc1SensorBuffer[PROC1_BUFFER_LEN];
 
 char _telemetry_data_string[TELEMETRY_DATA_LEN];
 char _tmp_log_data[GENERAL_BUFFER_LEN];
@@ -824,6 +825,7 @@ void process_proc2_data(char* dataLine) {
 char* get_subproc1_sensor_data() {
 
     static uint8_t counter = 0;
+    int8_t i2c_read_success;
 
     uint8_t packetInfoBuffer[4];
 
@@ -833,6 +835,8 @@ char* get_subproc1_sensor_data() {
         // Do this just as a safety - will reset the data retrieval in proc 3
         _subProc1.send_command(PROC1_COMMAND_RESET_DATA);
         counter = 0;
+        
+        usleep(10000);
     }
     
     memset(packetInfoBuffer, 0, 4);
@@ -840,13 +844,34 @@ char* get_subproc1_sensor_data() {
 
     _subProc1.get_i2c_data_packet(packetInfoBuffer, 3);
 
+    char infoBufferValues[128];
+    char errorBuffer[128];
+    
+    sprintf(infoBufferValues, "MC1 Packet Info: Total Len Requested: %d -- Full Packets: %d -- Partial Size: %d \n", packetInfoBuffer[0], packetInfoBuffer[1], packetInfoBuffer[2]);
+    
+    if (packetInfoBuffer[1] > 1)
+    {
+        sprintf(errorBuffer, "Packet # returned: %d\n", packetInfoBuffer[1]);
+        write_to_log("MC1-Buffer Err", errorBuffer);
+        return NULL;
+    }
+    
     int i;
     for (i = 0; i < packetInfoBuffer[1]; i++) {
-        _subProc1.get_i2c_string(&_proc1SensorBuffer[i * PACKET_LENGTH], PACKET_LENGTH);
+        _subProc1.get_i2c_ascii_string(&_proc1SensorBuffer[i * PACKET_LENGTH], PACKET_LENGTH, &i2c_read_success);
+        
+        if (i2c_read_success != I2C_TRANSFER_SUCCESS)
+        {
+            write_to_log_nl("MC1-Err1", _proc1SensorBuffer);
+        }
     }
 
     if (packetInfoBuffer[2]) {
-        _subProc1.get_i2c_string(&_proc1SensorBuffer[packetInfoBuffer[1] * PACKET_LENGTH], packetInfoBuffer[2]);
+        _subProc1.get_i2c_ascii_string(&_proc1SensorBuffer[packetInfoBuffer[1] * PACKET_LENGTH], packetInfoBuffer[2], &i2c_read_success);
+        if (i2c_read_success != I2C_TRANSFER_SUCCESS)
+        {
+            write_to_log_nl("MC1-Err2", _proc1SensorBuffer);
+        }
     }
 
     _proc1SensorBuffer[packetInfoBuffer[0]] = '\n';
@@ -950,6 +975,34 @@ void write_to_log(const char* source, char* data) {
 }
 
 
+void write_to_log_nl(const char* source, char* data) {
+
+    char timestamp[36];
+    char telemetry_string[256];
+
+    FILE* fp;
+    
+    if ((source == NULL) || (data == NULL)) return;
+    
+    /* open the file for append */
+    fp = fopen(TELEMETRY_LOG_FILE, "a");
+    
+    if (fp == NULL) {
+        printf("I couldn't open results.dat for appending.\n");
+        
+        return;
+    }
+
+    format_timestamp_with_milliseconds(timestamp);
+
+    fprintf(fp, "%s,%s,%s\n", source, timestamp, data);
+
+    fflush(fp);
+    
+    /* close the file */
+    fclose(fp);
+}
+
 
 void get_m1_data() {
 
@@ -1032,7 +1085,7 @@ double calculate_vertical_speed(double altitude, double seconds) {
     return mps;
 }
 
-
+char _testGpsDataString[GPS_DATA_BUFFER_LEN]; 
 
 /**
 * \fn send_telemetry
@@ -1044,6 +1097,7 @@ void send_telemetry() {
     char geiger[12];
 
     double pressure = atof(_proc2_dataArray[PROC2_DATA_POS_AIR_PRESSURE]);
+    printf("Actual Pressure: %f\n", pressure);
 
 #if (!TEST_TELEMETRY)
 
@@ -1063,7 +1117,7 @@ void send_telemetry() {
     TestStep();
     
 #endif
-
+                
     _balloonSwitchValue = !digitalRead(GPIO_PIN_BALLOON);
     _parachuteSwitchValue = !digitalRead(GPIO_PIN_PARACHUTE);
     
@@ -1072,76 +1126,67 @@ void send_telemetry() {
     if (_safetySwitchValue)
     {
         _warmupPeriodOver = TRUE;
-        
+
         switch (_balloon_state) {
 
-        case BALLOON_PREP:
+            case BALLOON_PREP:
 
-            if (_telemetry_sent_count > 10) {
-                _balloon_state = BALLOON_RISING;
-            }
-            break;
+                if (_telemetry_sent_count > 10) {
+                    _balloon_state = BALLOON_RISING;
+                }
+                break;
         
-        case BALLOON_RISING:
-            _current_altitude += ((DEFAULT_ASCENT_RATE * 2) * TEST_ASCENT_RATE_MULTIPLIER);
+            case BALLOON_RISING:
+                _current_altitude += ((DEFAULT_ASCENT_RATE * 2) * TEST_ASCENT_RATE_MULTIPLIER);
+                break;
 
-            _balloon_current_position.lat += _balloon_change_lat;
-            _balloon_current_position.lon += _balloon_change_lon;
-            break;
-
-        case BALLOON_RELEASED:
+            case BALLOON_RELEASED:
             
-            _balloon_falling_counter++;
-            _current_altitude = _current_altitude - (_speed_increment * _balloon_falling_counter);
+                _balloon_falling_counter++;
+                _current_altitude = _current_altitude - (_speed_increment * _balloon_falling_counter);
 
-            if (_balloon_falling_counter == 5) {
-                _balloon_state = BALLOON_FALLING;
+                if (_balloon_falling_counter == 5) {
+                    _balloon_state = BALLOON_FALLING;
 
-                _altitude_index = get_altitude_index(_current_altitude) + 1;
-            }
+                    _altitude_index = get_altitude_index(_current_altitude) + 1;
+                }
+                break;
 
-            _balloon_current_position.lat += _balloon_change_lat;
-            _balloon_current_position.lon += _balloon_change_lon;
-            break;
+            case BALLOON_FALLING:
 
-        case BALLOON_FALLING:
+                if ((_altitude_index < _altitude_table_size) && (_current_altitude > _balloon_ending_position.alt)) {
+                    _current_altitude = _altitude_table[_altitude_index++].altitude_meters;
 
-            if ((_altitude_index < _altitude_table_size) && (_current_altitude > _balloon_ending_position.alt)) {
-                _current_altitude = _altitude_table[_altitude_index++].altitude_meters;
+                    if (_current_altitude < _ground_altitude) {
+                        _current_altitude = _ground_altitude;
+                    }
+                }
+
+                break;
+
+            case PARACHUTE_DEPLOYED:
+
+                _current_altitude -= (DEFAULT_PARACHUTE_DECENT_RATE * 2);
 
                 if (_current_altitude < _ground_altitude) {
                     _current_altitude = _ground_altitude;
-
                 }
-                else {
-                    _balloon_current_position.lat += _balloon_change_lat;
-                    _balloon_current_position.lon += _balloon_change_lon;
-                }
-            }
 
-            break;
+                break;
+        }
 
-        case PARACHUTE_DEPLOYED:
-
-            _current_altitude -= (DEFAULT_PARACHUTE_DECENT_RATE * 2);
-
-            if (_current_altitude < _ground_altitude) {
-                _current_altitude = _ground_altitude;
-
-            }
-            else {
-                _balloon_current_position.lat += _balloon_change_lat;
-                _balloon_current_position.lon += _balloon_change_lon;
-            }
-
-            break;
+        if ((_balloon_state != BALLOON_PREP) && (_current_altitude < _ground_altitude))
+        {
+            _balloon_current_position.lat += _balloon_change_lat;
+            _balloon_current_position.lon += _balloon_change_lon;
         }
 
     }
     
     pressure = _altitudePressure.getPressure(_current_altitude);
     
-    sprintf(_gpsDataString1, "%7.5f,%7.5f,%3.1f,%3.1f,%3.1f,%d,%d",
+    sprintf(_testGpsDataString,
+        "%7.5f,%7.5f,%3.1f,%3.1f,%3.1f,%d,%d",
         _balloon_current_position.lat,
         _balloon_current_position.lon,
         _current_altitude,
@@ -1150,7 +1195,7 @@ void send_telemetry() {
         TRUE,
         6);
 
-    gpsDataPtr = _gpsDataString1;
+    gpsDataPtr = _testGpsDataString;
     
 #else
 
@@ -1267,7 +1312,7 @@ sprintf(sensorData, "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s",
         "0.0",                                                                      // 23 - radio strength  ****
         
         gpsDataPtr,                                                                 // 24-30 - GPS Data
-                                                                                     // 24: latitude
+                                                                                        // 24: latitude
                                                                                         // 25: longitude
                                                                                         // 26: altitude
                                                                                         // 27: speed
@@ -1410,9 +1455,10 @@ int send_craft_message(int index, int value) {
 
         if (_messageValidator.appendCheckSum(_craftMessage)) {
 
-            write_to_log("CRM", _craftMessage);
             strcat(_craftMessage, "\n");
 
+            write_to_log("CRM", _craftMessage);
+            
             _serialStream_Radio->uart_transmit(_craftMessage);
 
 #if (DEBUG_PRINT)
@@ -2074,7 +2120,8 @@ int test_uart_streams(char uartNumber)
     
     return result;
 }
-        
+
+char* tst;
 
 /**
 * \fn main
@@ -2082,7 +2129,7 @@ int test_uart_streams(char uartNumber)
 * \return 0 (never happens)
 */
 int main(int argc, char *argv [])
-{
+{	
     initialize_log(TELEMETRY_LOG_FILE);
    
     initialize_serial_devices();
@@ -2092,13 +2139,14 @@ int main(int argc, char *argv [])
     _initial_time = time(NULL);
 
     _pictureCount = 0;
-
+    
     _safety_switch_was = digitalRead(GPIO_PIN_SAFETY);
 
     sprintf(_lastGpsDataString, "%7.5f,%7.5f,%3.1f,%3.1f,%3.1f,%d,%d",
         0.0, 0.0, 0.0, 0.0, 0.0, 0, 0);
 
-    //switch_leds(FALSE);
+    memset(_proc1SensorBuffer, 0, PROC1_BUFFER_LEN);
+
     _subProc3.send_command(PROC3_COMMAND_LEDS_OFF);
     
     display_user_message("Testing...");

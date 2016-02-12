@@ -146,7 +146,7 @@
 #define TELEMETRY_DATA_LEN                  256
 #define GENERAL_BUFFER_LEN                  128
 #define GPS_DATA_BUFFER_LEN                  64
-
+#define PROC1_BUFFER_LEN					 64
 
 #define TELEMETRY_LOG_FILE					"/home/pi/PegasusMission/telemetryLog.txt"
 #define GPS_PROJECTION_DATA_FILE            "/home/pi/p2data/ProjectedGpsLocation.txt"

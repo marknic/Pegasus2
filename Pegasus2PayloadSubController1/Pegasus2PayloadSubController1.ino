@@ -272,8 +272,16 @@ void sendData() {
     
     // Initial call: send back amount of data to transfer
     if (_initialCall) {
+
+        int datalen = strlen(_sensorData);
+
+        if (datalen >= 64)
+        {
+            return;
+        }
+
         strcpy(_sendBuffer, _sensorData);             // temporarily store the sensor data to send
-        _transferBufferLen = strlen(_sendBuffer);
+        _transferBufferLen = datalen;
         _fullPacketsSent = 0;
         _xferBufferPtr = 0;
 

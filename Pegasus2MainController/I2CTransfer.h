@@ -18,6 +18,10 @@
 #define MAX_I2C_DATA_LENGTH                     32
 #define USER_MSG_MAX_LEN                        60
 
+#define I2C_TRANSFER_SUCCESS					 0
+#define I2C_TRANSFER_NON_PRINTABLE              -1
+#define I2C_TRANSFER_LENGTH_MISMATCH            -2
+
 class I2CTransfer
 {
 private:
@@ -29,6 +33,8 @@ public:
     //~I2CTransfer();
 
     char* get_i2c_string(char* buffer, int length);
+	char* get_i2c_ascii_string(char* buffer, int length, int8_t* success);
+	
     uint8_t* get_i2c_data_packet(uint8_t* buffer, int length);
     void send_command(uint8_t command);
     void send_user_text(char* userText);

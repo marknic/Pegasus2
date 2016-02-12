@@ -15,7 +15,7 @@
 #define FALSE                            0==1
 #endif
 
-#define DEBUG_DISPLAY                   TRUE
+#define DEBUG_DISPLAY                   FALSE
 
 #define TMP_36_PIN                         A0
 
@@ -111,6 +111,8 @@ void watchdog_reset() {
 
 void setup()
 {
+    analogReference(INTERNAL);
+
     Wire.begin();
 
     digitalWrite(LED_BUILTIN, LOW);
@@ -185,33 +187,40 @@ void sendSensorSamples() {
 
     if (isnan(thermocouple_temp_c)) {
         thermocouple_temp_c = -999.0;
-    }
-
-    if ((thermocouple_temp_c <= _thermocouple_temp_c_previous + THERMOCOUPLE_VARIABILITY) &&
-        (thermocouple_temp_c >= _thermocouple_temp_c_previous - THERMOCOUPLE_VARIABILITY))
-    {
-        _thermocouple_temp_c_previous = thermocouple_temp_c;
     } else
     {
-        thermocouple_temp_c = _thermocouple_temp_c_previous;
+        _thermocouple_temp_c_previous = thermocouple_temp_c;
     }
+
+    //if ((thermocouple_temp_c <= _thermocouple_temp_c_previous + THERMOCOUPLE_VARIABILITY) &&
+    //    (thermocouple_temp_c >= _thermocouple_temp_c_previous - THERMOCOUPLE_VARIABILITY))
+    //{
+    //    _thermocouple_temp_c_previous = thermocouple_temp_c;
+    //} else
+    //{
+    //    thermocouple_temp_c = _thermocouple_temp_c_previous;
+    //}
 
     //getting the voltage reading from the temperature sensor
     int tmpReading = analogRead(TMP_36_PIN);
    
     // converting that reading to voltage, for 3.3v arduino use 3.3
-    double voltage_value = tmpReading * VOLTAGE_RATIO;
+    // double voltage_value = tmpReading * VOLTAGE_RATIO;  // Use with TMP36
 
     // now print out the temperature
-    double temperatureC = (voltage_value - 0.5) * 100;  //converting from 10 mv per degree wit 500 mV offset
+    double temperatureC = (tmpReading / 9.31) * 2.28;  // LM35 Celcius Calculation
+    //double temperatureC = (voltage_value - 0.5) * 100;  //converting from 10 mv per degree wit 500 mV offset  - TMP36
                                                      //to degrees ((tmp_voltage - 500mV) times 100)
 
 
     if (isnan(temperatureC)) {
-        temperatureC = -999.0;
+        temperatureC = _temperatureC_previous;
+    } else
+    {
+        _temperatureC_previous = temperatureC;
     }
 
-    if ((temperatureC <= _thermocouple_temp_c_previous + THERMOCOUPLE_VARIABILITY) &&
+   /* if ((temperatureC <= _thermocouple_temp_c_previous + THERMOCOUPLE_VARIABILITY) &&
         (temperatureC >= _thermocouple_temp_c_previous - THERMOCOUPLE_VARIABILITY))
     {
         _temperatureC_previous = temperatureC;
@@ -219,7 +228,7 @@ void sendSensorSamples() {
     else
     {
         temperatureC = _temperatureC_previous;
-    }
+    }*/
 
 
 
@@ -300,32 +309,32 @@ void configureSensors(void)
     pressure_baseline = pressure_sensor.getPressure(ADC_4096);
 
 
-    for (int i = 0; i < 10; i++)
-    {
-        thermocouple_temp_c = thermocouple.readCelsius();
+    //for (int i = 0; i < 10; i++)
+    //{
+    //    thermocouple_temp_c = thermocouple.readCelsius();
 
-        if (!isnan(thermocouple_temp_c)) {
-            _thermocouple_temp_c_previous = thermocouple_temp_c;
-        }
-    }
+    //    if (!isnan(thermocouple_temp_c)) {
+    //        _thermocouple_temp_c_previous = thermocouple_temp_c;
+    //    }
+    //}
 
 
    
 
-    for (int i = 0; i < 10; i++)
-    {
-        //getting the voltage reading from the temperature sensor
-        int tmpReading = analogRead(TMP_36_PIN);
+    //for (int i = 0; i < 10; i++)
+    //{
+    //    //getting the voltage reading from the temperature sensor
+    //    int tmpReading = analogRead(TMP_36_PIN);
 
-        // converting that reading to voltage, for 3.3v arduino use 3.3
-        double voltage_value = tmpReading * VOLTAGE_RATIO;
+    //    // converting that reading to voltage, for 3.3v arduino use 3.3
+    //    double voltage_value = tmpReading * VOLTAGE_RATIO;
 
-        // now print out the temperature
-        double temperatureC = (voltage_value - 0.5) * 100;  //converting from 10 mv per degree wit 500 mV offset
-                                                            //to degrees ((tmp_voltage - 500mV) times 100)
+    //    // now print out the temperature
+    //    double temperatureC = (voltage_value - 0.5) * 100;  //converting from 10 mv per degree wit 500 mV offset
+    //                                                        //to degrees ((tmp_voltage - 500mV) times 100)
 
-        if (!isnan(temperatureC)) {
-            _temperatureC_previous = temperatureC;
-        }
-    }
+    //    if (!isnan(temperatureC)) {
+    //        _temperatureC_previous = temperatureC;
+    //    }
+    //}
 }

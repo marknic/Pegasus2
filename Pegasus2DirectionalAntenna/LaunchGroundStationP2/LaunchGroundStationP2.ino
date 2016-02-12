@@ -121,7 +121,7 @@ void send_data_to_video_antenna() {
     char el[6];
 
     Serial.print("calc'd az: "); Serial.print(_calculatedValuesBalloon.azimuth);
-    Serial.print("calc'd el: "); Serial.print(_calculatedValuesBalloon.elevation);
+    Serial.print("  el: "); Serial.println(_calculatedValuesBalloon.elevation);
 
     if ((_calculatedValuesBalloon.azimuth >= 0.0) && (_calculatedValuesBalloon.azimuth <= 360.0)) {
         if ((_calculatedValuesBalloon.azimuth >= -20.0) && (_calculatedValuesBalloon.elevation <= 90.0)) {
@@ -659,6 +659,9 @@ void loop()
                 
                 // Debugging...
                 Serial.println(_radioMessageIn);
+            } else
+            {
+                Serial.print(">>>Recept Err: '"); Serial.print(_radioMessageIn); Serial.println("'");
             }
         }
     }
