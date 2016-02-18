@@ -1175,7 +1175,7 @@ void send_telemetry() {
                 break;
         }
 
-        if ((_balloon_state != BALLOON_PREP) && (_current_altitude < _ground_altitude))
+        if (_balloon_state != BALLOON_PREP) 
         {
             _balloon_current_position.lat += _balloon_change_lat;
             _balloon_current_position.lon += _balloon_change_lon;

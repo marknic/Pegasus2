@@ -129,7 +129,7 @@ void display_text(char* text_to_display)
         _timer.stop(_timer_id);
     }
 
-    _timer_id = _timer.after(8000, display_pegasus_2);
+    _timer_id = _timer.after(9000, display_pegasus_2);
     
 }
 

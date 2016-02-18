@@ -172,7 +172,11 @@ char scratch14[12];
 // This can run at max, 4x/sec (250ms)
 void sendSensorSamples() {
 
-    lsm.read();
+    //lsm.read();
+
+    sensors_event_t accel, mag, gyro, temp;
+
+    lsm.getEvent(&accel, &mag, &gyro, &temp);
 
     humidity = myHumidity.readHumidity();
     humidity_temp = myHumidity.readTemperature();
@@ -231,21 +235,21 @@ void sendSensorSamples() {
     }*/
 
 
-
+   
     sprintf(sensorData, "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s",
         dtostrf(pressure_abs, 3, 1, scratch01),
         dtostrf(pressure_temperature_c, 3, 1, scratch02),  
         dtostrf(humidity, 3, 1, scratch03),
         dtostrf(thermocouple_temp_c, 3, 1, scratch04),
-        dtostrf(lsm.accelData.x, 3, 1, scratch05),
-        dtostrf(lsm.accelData.y, 3, 1, scratch06),
-        dtostrf(lsm.accelData.z, 3, 1, scratch07),
-        dtostrf(lsm.gyroData.x, 3, 1, scratch08),
-        dtostrf(lsm.gyroData.y, 3, 1, scratch09),
-        dtostrf(lsm.gyroData.z, 3, 1, scratch10),
-        dtostrf(lsm.magData.x, 3, 1, scratch11),
-        dtostrf(lsm.magData.y, 3, 1, scratch12),
-        dtostrf(lsm.magData.z, 3, 1, scratch13),
+        dtostrf(accel.acceleration.x, 3, 1, scratch05),
+        dtostrf(accel.acceleration.y, 3, 1, scratch06),
+        dtostrf(accel.acceleration.z, 3, 1, scratch07),
+        dtostrf(gyro.gyro.x, 3, 1, scratch08),
+        dtostrf(gyro.gyro.y, 3, 1, scratch09),
+        dtostrf(gyro.gyro.z, 3, 1, scratch10),
+        dtostrf(mag.magnetic.x, 3, 1, scratch11),
+        dtostrf(mag.magnetic.y, 3, 1, scratch12),
+        dtostrf(mag.magnetic.z, 3, 1, scratch13),
         dtostrf(temperatureC, 3, 1, scratch14)
         );
 

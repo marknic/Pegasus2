@@ -1,4 +1,5 @@
 
+#include <SD/SD.h>
 #include <Wire.h>
 
 #include <SoftwareSerial.h>
@@ -11,6 +12,8 @@
 
 #include <Adafruit_GPS.h>
 
+#include <EEPROM.h>
+
 #include <PegasusCommandProcessor.h>
 #include <AzimuthElevation.h>
 #include <MessageValidation.h>
@@ -22,6 +25,8 @@
 #ifndef FALSE
 #define FALSE   (1==2)
 #endif
+
+#define LAT_LON_EEPROM_ADDRESS                              0
 
 #define DEBUG_DO_DISPLAY                                    0
 
@@ -39,15 +44,15 @@
 
 #define GPSECHO                                         false
 
-#define DO_LOG_DATA_TO_SD                                   0
+#define DO_LOG_DATA_TO_SD                                TRUE
 
 #define CLOCK_ADDRESS                                    0x68  // This is the I2C address
 
 #define MPH_PER_KNOT                        1.150779448023543
 #define KPH_PER_KNOT                                    1.852
 
-#define DO_SPEED_IN_MPH                                 FALSE          
-#define DO_SPEED_IN_KPH                                  TRUE   
+#define DO_SPEED_IN_MPH                                  TRUE          
+#define DO_SPEED_IN_KPH                                 FALSE   
 
 #define TELEMETRY_INDICATOR_CHAR                          '$'
 #define COMMAND_INDICATOR_CHAR                            '{'
@@ -111,6 +116,8 @@ latLonAlt _balloonPosition;
 azDistVals _calculatedValuesBalloon;
 azDistVals _calculatedValuesStations;
 
+uint8_t _logCounter = 0;
+
 
 void generateTelemetry();
 
@@ -140,68 +147,71 @@ void useInterrupt(boolean v) {
 }
 
 
-
+#define CHIP_SELECT_PIN 10
 uint32_t _eventCounter = 0;
 uint8_t _timerExpiredCheckDone = 0;
+char _filename[24];
+File _logfile;
 
 
-//void setupSDLogging() {
-//
-//    if (DO_LOG_DATA_TO_SD) {
-//
-//        // make sure that the default chip select pin is set to
-//        // output, even if you don't use it:
-//        pinMode(10, OUTPUT);
-//
-//        // see if the card is present and can be initialized:
-//        if (!SD.begin(10)) {
-//            Serial.println("Card failed, or not present");
-//            // don't do anything more:
-//            return;
-//        }
-//        Serial.println("card initialized.");
-//
-//        strcpy(_filename, "PEGLOG00.TXT");
-//
-//        for (uint8_t i = 0; i < 100; i++) {
-//            _filename[6] = '0' + i / 10;
-//            _filename[7] = '0' + i % 10;
-//            // create if does not exist, do not open existing, write, sync after write
-//            if (!SD.exists(_filename)) {
-//                break;
-//            }
-//        }
-//
-//        _logfile = SD.open(_filename, FILE_WRITE);
-//        if (!_logfile) {
-//            Serial.print("Couldn't create ");
-//            Serial.println(_filename);
-//        }
-//        else {
-//            _logfile.close();
-//            Serial.print("Writing to ");
-//            Serial.println(_filename);
-//        }
-//    }
-//}
-//
-//void writeToLogFile(char* dataToWrite) {
-//
-//    if (DO_LOG_DATA_TO_SD) {
-//        _logfile = SD.open(_filename, FILE_WRITE);
-//
-//        if (!_logfile) {
-//            Serial.print("Couldnt create ");
-//            Serial.println(_filename);
-//        }
-//        else {
-//
-//            _logfile.println(dataToWrite);
-//
-//            _logfile.close();
-//        }
-//    }
-//}
+void setupSDLogging() {
+
+    if (DO_LOG_DATA_TO_SD) {
+
+        // make sure that the default chip select pin is set to
+        // output, even if you don't use it:
+        pinMode(CHIP_SELECT_PIN, OUTPUT);
+
+        // see if the card is present and can be initialized:
+        if (!SD.begin(CHIP_SELECT_PIN, 11, 12, 13)) {
+            Serial.println("Card init. failed!");
+        }
+        Serial.println("card initialized.");
+
+        strcpy(_filename, "PEGLOG00.TXT");
+
+        for (uint8_t i = 0; i < 100; i++) {
+            _filename[6] = '0' + i / 10;
+            _filename[7] = '0' + i % 10;
+            // create if does not exist, do not open existing, write, sync after write
+            if (!SD.exists(_filename)) {
+                break;
+            }
+        }
+
+        _logfile = SD.open(_filename, FILE_WRITE);
+        
+        if (_logfile == NULL) {
+            Serial.print("Couldn't create ");
+            Serial.println(_filename);
+        }
+        else {
+            Serial.print("Writing to ");
+            Serial.println(_filename);
+        }
+    }
+}
+
+
+void writeToLogFile(char* dataToWrite) {
+
+    if (DO_LOG_DATA_TO_SD) {
+
+        _logfile.write(dataToWrite);
+
+        _logfile.write("\n");
+
+        _logCounter++;
+
+        if (_logCounter >= 5)
+        {
+            _logfile.flush();
+
+            _logCounter = 0;
+        }
+
+    }
+}
 
 
 
@@ -252,6 +262,15 @@ void watchdogSetup()
 void watchdog_reset() {
     wdt_reset();
 }
+
+
+void get_eeprom_data()
+{
+
+    EEPROM.get(LAT_LON_EEPROM_ADDRESS, _launchStationPosition);
+
+}
+
 
 // Convert binary coded decimal to normal decimal numbers
 uint8_t bcdToDec(uint8_t val)
@@ -309,6 +328,9 @@ void setup()
     
     Wire.begin();
 
+    get_eeprom_data();
+
+
 #if(DEBUG_DO_DISPLAY)
     Serial.println("Starting.");
 #endif
@@ -337,13 +359,12 @@ void setup()
 
     _gpsDate[0] = 0;
 
+    setupSDLogging();
+
     watchdogSetup();
 
     _timer.every(1000, watchdog_reset);
     _timer.every(2000, generateTelemetry);
-
-    //setupSDLogging();
-
 }
 
 
@@ -393,32 +414,19 @@ void generateTelemetry() {
     char scratchRegister4[16];
     char scratchRegister5[16];
     char scratchRegister6[16];
-    char scratchRegister7[16];
-    char scratchRegister8[16];
-    char scratchRegister9[16];
-
-  //  char tmpGps[256];
 
     getDateTime();
 
     sprintf(_gpsDate, "20%02d-%02d-%02dT", year, month, day);
     sprintf(_gpsTimestamp, "%02d:%02d:%02dZ", hour, minute, second);
-    //Serial.print("<<<<");
+    
     if (_gpsSensor.newNMEAreceived()) {
 
         if (_gpsSensor.parse(_gpsSensor.lastNMEA())) {  // this also sets the newNMEAreceived() flag to false
 
             if (_gpsSensor.fix) {
                 
-//                char* nmeaPtr = _gpsSensor.lastNMEA();
-
-                //if (nmeaPtr[3] == 'G') {
-                //    strcpy(tmpGps, nmeaPtr);
-                //    Serial.print(">>>>"); Serial.println(tmpGps);
-                //}
                 _prevAltitude = _gpsSensor.altitude;
-
-                //Serial.print(">>>>"); Serial.println(_gpsSensor.altitude);
 
                 sprintf(_gpsData, "%s,%s,%s,%s,%s,%d,%d",
                     dtostrf(_gpsSensor.latitudeDegrees, 3, 4, scratchRegister1),
@@ -479,7 +487,7 @@ void generateTelemetry() {
     //Serial.print(" ---> Telemetry out> ");
     Serial.println(telemetry);
 
-    //writeToLogFile(telemetry);
+    writeToLogFile(telemetry);
 
     // $: timestamp, tempInside, tempOutside, humidity, atPressure, latitude, longitude, altitude, groundSpeed, direction, signalStrength, accelerometerX, accelerometerY, accelerometerZ, heading, batteryLevel, balloonRelease, gpsFix, satellites
     // "$:2014-12-01T13:15:30Z,48.1,-18.2,14.6,6.7523,41.095938,-87.909996,23568.5,47.9,134.3,25.5,5.847,2.39,9.4,33.2,7.1,0,1,6";
@@ -502,6 +510,8 @@ int8_t processCommand(int cmdDataCount) {
             _launchStationPosition.lat = _balloonPosition.lat;
             _launchStationPosition.lon = _balloonPosition.lon;
             _launchStationPosition.alt = _balloonPosition.alt;
+
+            EEPROM.put(LAT_LON_EEPROM_ADDRESS, _launchStationPosition);
 
             //Serial.print(" Lat: "); Serial.print(_launchStationPosition.lat);
             //Serial.print(" Lon: "); Serial.print(_launchStationPosition.lon);
@@ -611,6 +621,8 @@ void loop()
                 _radioMessageIn[_radioMsgInCount] = 0;
 
                 _radioMsgInCount = RADIO_MSG_OFFSET_INIT;
+
+                writeToLogFile(_radioMessageIn);
 
                 if (_messageValidator.validateMessage(_radioMessageIn)) {
 
