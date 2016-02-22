@@ -7,7 +7,7 @@
 #define FALSE                            (1==2)
 #endif
 
-#define TEST_TELEMETRY                    TRUE
+#define TEST_TELEMETRY                    FALSE
 
 #define DEBUG_PRINT                        TRUE
 
@@ -114,8 +114,8 @@
 #define PROC2_DATA_COUNT                     14
 #define PROC1_DATA_COUNT                     12
 
-#define ALTITUDE_STRATOSPHERE             10058   // 33,000 ft.
-#define ALTITUDE_ABOVE_TRAFFIC            12192   // 40,000 ft.
+#define ALTITUDE_STRATOSPHERE             11582   // 38,000 ft.
+#define ALTITUDE_ABOVE_TRAFFIC            13411   // 40,000 ft.
 #define ALTITUDE_I_CAN_SEE                15240   // 50,000 ft.
 #define ALTITUDE_CURVATURE                19812   // 65,000 ft.
 #define ALTITUDE_PEGASUS_I                25908   // 85,000 ft.

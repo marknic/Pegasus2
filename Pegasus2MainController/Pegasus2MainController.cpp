@@ -117,13 +117,13 @@ uint8_t _craft_notes_flags[CRAFT_NOTE_COUNT] = {
 char _craft_notes[CRAFT_NOTE_COUNT][CRAFT_NOTE_TEXT_LENGTH] = {
     "}N:PII - Liftoff - Pegasus 2 is Flying",
     "}N:PII - Safe Mode",
-    "}N:PII - Above Air Traffic (40000')",
-    "}N:PII - Curvature Seen (65000')",
-    "}N:PII - Goal Altitude Reached! (100000')",
+    "}N:PII - Above Air Traffic:  44000'",
+    "}N:PII - Curvature of the Earth Seen  65000'",
+    "}N:PII - Goal Altitude Reached!  100000'",
     "}N:PII - Balloon Released-Falling!",
     "}N:PII - Parachute Deployed",
-    "}N:PII - I can see my house! (Half-way Point: 50000')",
-    "}N:PII - Reached Stratosphere! (Roughly: 33000')",
+    "}N:PII - I can see my house! Half-way Point: 50000'",
+    "}N:PII - Entering Stratosphere!  38000'",
     "}N:PII - Diving over 200MPH!",
     "}N:PII - Screaming over 250MPH!",
     "}N:PII - Plummeting over 300MPH!",
@@ -131,7 +131,7 @@ char _craft_notes[CRAFT_NOTE_COUNT][CRAFT_NOTE_TEXT_LENGTH] = {
     "}N:PII - Autodeploy Altitude Set to: %d'",
     "}N:PII - UFO Lights On",
     "}N:PII - UFO Lights Off",
-    "}N:PII - Reached altitude of Pegasus-I and still going."
+    "}N:PII - Reached Pegasus-I max altitude: 85000'"
 };
 
 
@@ -2148,9 +2148,7 @@ int main(int argc, char *argv [])
     memset(_proc1SensorBuffer, 0, PROC1_BUFFER_LEN);
 
     _subProc3.send_command(PROC3_COMMAND_LEDS_OFF);
-    
-    display_user_message("Testing...");
-    
+     
     _subProc1.send_command(PROC3_COMMAND_RESET);
     
     _subProc1.send_command(PROC1_COMMAND_RESET_SERVOS);
@@ -2293,6 +2291,10 @@ int main(int argc, char *argv [])
     
 #endif
 
+    
+    display_user_message("Pegasus II Initializing...");
+    
+    
     _telemetry_timer.every(1000, get_m1_data);
     
     _telemetry_timer.every(2000, send_telemetry);

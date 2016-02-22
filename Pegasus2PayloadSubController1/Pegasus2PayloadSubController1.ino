@@ -35,14 +35,15 @@
 
 #define I2C_ADDRESS                  0x04
 
-#define SERVO_LAUNCH_POSITION_BALLOON      1000   
-#define SERVO_RETRACT_POSITION_BALLOON     2000
+#define SERVO_LAUNCH_POSITION_BALLOON      2000   
+#define SERVO_RETRACT_POSITION_BALLOON     1300
 
 #define SERVO_LAUNCH_POSITION_PARACHUTE    1000  
-#define SERVO_RETRACT_POSITION_PARACHUTE   2000  
+#define SERVO_RETRACT_POSITION_PARACHUTE   1700  
 
 #define SERVO_OUT_POSITION_VID             1000  
 #define SERVO_UP_POSITION_VID              2000
+
 #define SERVO_SPEED_VID                    1500
 #define SERVO_SPEED_DEFAULT                1500
 
@@ -594,10 +595,17 @@ void setup()
     pinMode(UV_UVOUT_PIN, INPUT);
     pinMode(ARDUINO_REF_3V3, INPUT);
 
-    delay(5000);
+    delay(2000);
 
     // Initialize all servo positions to start
     setupServos();
+
+
+    //delay(8000);
+    //setServoPosition(SERVO_BAL_PIN, SERVO_RETRACT_POSITION_BALLOON);*/
+
+    //setServoPosition(SERVO_PARA_PIN, SERVO_RETRACT_POSITION_PARACHUTE);
+
 
     Wire.onReceive(receiveData);
 
