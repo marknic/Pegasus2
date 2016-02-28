@@ -68,6 +68,9 @@
 #define ADC_COUNT                                      1024.0
 #define VOLTAGE_RATIO          (REFERENCE_VOLTAGE / ADC_COUNT)
 
+#define DATA_ARRAY_LEN                                     39
+
+
 Timer _timer;
 
 bool _realTimeClockSet = false;
@@ -264,6 +267,18 @@ void watchdog_reset() {
 }
 
 
+void reset_eeprom_values()
+{
+    Serial.println("Resetting the location and EEPROM values");
+
+    _launchStationPosition.lat = 0.0;
+    _launchStationPosition.lon = 0.0;
+    _launchStationPosition.alt = 0.0;
+
+    EEPROM.put(LAT_LON_EEPROM_ADDRESS, _launchStationPosition);
+}
+
+
 void get_eeprom_data()
 {
 
@@ -328,8 +343,17 @@ void setup()
     
     Wire.begin();
 
+    //  Uncomment the next line and run to reset the eeprom (lat/lon) values
+    // reset_eeprom_values();
+
     get_eeprom_data();
 
+#if(DEBUG_DO_DISPLAY)
+    delay(5000);
+    Serial.print("_launchStationPosition.lat: "); Serial.println(_launchStationPosition.lat);
+    Serial.print("_launchStationPosition.lon: "); Serial.println(_launchStationPosition.lon);
+    Serial.print("_launchStationPosition.alt: "); Serial.println(_launchStationPosition.alt);
+#endif
 
 #if(DEBUG_DO_DISPLAY)
     Serial.println("Starting.");
@@ -513,16 +537,18 @@ int8_t processCommand(int cmdDataCount) {
 
             EEPROM.put(LAT_LON_EEPROM_ADDRESS, _launchStationPosition);
 
-            //Serial.print(" Lat: "); Serial.print(_launchStationPosition.lat);
-            //Serial.print(" Lon: "); Serial.print(_launchStationPosition.lon);
-            //Serial.print(" Alt: "); Serial.print(_launchStationPosition.alt);
-            //Serial.println(" meters.");
+#if(DEBUG_DO_DISPLAY)
+            Serial.print(" Lat: "); Serial.print(_launchStationPosition.lat);
+            Serial.print(" Lon: "); Serial.print(_launchStationPosition.lon);
+            Serial.print(" Alt: "); Serial.print(_launchStationPosition.alt);
+            Serial.println(" meters.");
+#endif
 
             commandValid = 0;
 
         }
         else {
-            Serial.println("in Else");
+            //Serial.println("in Else");
             if (cmdDataCount != 3) {
                 Serial.println(" Not enough data elements (need 3): ");
             }
@@ -553,11 +579,14 @@ void loop()
     _timer.update();
 
 
-    // Coming from the Field Gateway 
-    //  Destination: Local if "G" command
-    //               Craft otherwise
+    // Field Gateway
+    //  FFFFFF   GGGG
+    //  FF      GG  
+    //  FFFFF   GG GGG
+    //  FF      GG  GG
+    //  FF       GGGG
     while (Serial.available() > 0) {
-        char incomingByte = (char) Serial.read();
+        char incomingByte = (char)Serial.read();
 
         if (incomingByte == COMMAND_INDICATOR_CHAR) {
             _radioMsgOutCount = RADIO_MSG_OFFSET_INIT;
@@ -572,7 +601,7 @@ void loop()
         _radioMessageOut[_radioMsgOutCount] = incomingByte;
 
         if ((incomingByte == '\n') || (incomingByte == '\\') || (incomingByte == '|')) {
-            
+
             _radioMessageOut[_radioMsgOutCount] = 0;
             _radioMsgOutCount = RADIO_MSG_OFFSET_INIT;
 
@@ -592,8 +621,14 @@ void loop()
     }
 
 
+    //Radio
+    //  RRRRR     AAAA   DDDDD   IIIIII   OOOO
+    //  RR  RR   AA  AA  DD  DD    II    OO  OO
+    //  RRRRR    AAAAAA  DD  DD    II    OO  OO
+    //  RR RR    AA  AA  DD  DD    II    OO  OO
+    //  RR  RR   AA  AA  DDDDD   IIIIII   OOOO 
     while (Serial2.available() > 0) {
-        char incomingByte = (char) Serial2.read();
+        char incomingByte = (char)Serial2.read();
 
         // Craft Telemetry
         if (incomingByte == TELEMETRY_INDICATOR_CHAR) {
@@ -602,7 +637,6 @@ void loop()
         // Craft messages
         if (incomingByte == NOTE_INDICATOR_CHAR) {
             _radioMsgInCount = RADIO_MSG_OFFSET_INIT;
-            printf("Received craft note begin\n");
         }
 
         _radioMsgInCount++;
@@ -612,89 +646,92 @@ void loop()
 
             //Serial.print("#Data 1 Error: msg > "); Serial.print(RADIO_MSG_MAX_SIZE); Serial.println(" bytes.");
         }
-        else {
 
-            _radioMessageIn[_radioMsgInCount] = incomingByte;
+        _radioMessageIn[_radioMsgInCount] = incomingByte;
 
-            if ((incomingByte == '\n') || (incomingByte == '\\') || (incomingByte == '|')) {
+        if ((incomingByte == '\n') || (incomingByte == '\\') || (incomingByte == '|')) {
 
-                _radioMessageIn[_radioMsgInCount] = 0;
+            _radioMessageIn[_radioMsgInCount] = 0;
 
-                _radioMsgInCount = RADIO_MSG_OFFSET_INIT;
+            _radioMsgInCount = RADIO_MSG_OFFSET_INIT;
 
-                writeToLogFile(_radioMessageIn);
+            writeToLogFile(_radioMessageIn);
 
-                if (_messageValidator.validateMessage(_radioMessageIn)) {
+            if (_messageValidator.validateMessage(_radioMessageIn) != -1) {
 
-                    if (!_realTimeClockSet) {
-                        if (_radioMessageIn[0] == TELEMETRY_INDICATOR_CHAR) {
-                            second = (uint8_t) ((_radioMessageIn[19] - 48) * 10 + (_radioMessageIn[20] - 48));
-                            minute = (uint8_t) ((_radioMessageIn[16] - 48) * 10 + (_radioMessageIn[17] - 48));
-                            hour = (uint8_t) ((_radioMessageIn[13] - 48) * 10 + (_radioMessageIn[14] - 48));
-                            dayOfWeek = (uint8_t) 0;
-                            day = (uint8_t) ((_radioMessageIn[10] - 48) * 10 + (_radioMessageIn[11] - 48));
-                            month = (uint8_t) ((_radioMessageIn[7] - 48) * 10 + (_radioMessageIn[8] - 48));
-                            year = (uint8_t) ((_radioMessageIn[4] - 48) * 10 + (_radioMessageIn[5] - 48));
+                //if (!_realTimeClockSet) {
+                if (_radioMessageIn[0] == TELEMETRY_INDICATOR_CHAR) {
+                    second = (uint8_t)((_radioMessageIn[19] - 48) * 10 + (_radioMessageIn[20] - 48));
+                    minute = (uint8_t)((_radioMessageIn[16] - 48) * 10 + (_radioMessageIn[17] - 48));
+                    hour = (uint8_t)((_radioMessageIn[13] - 48) * 10 + (_radioMessageIn[14] - 48));
+                    //dayOfWeek = (uint8_t) 0;
+                    day = (uint8_t)((_radioMessageIn[10] - 48) * 10 + (_radioMessageIn[11] - 48));
+                    month = (uint8_t)((_radioMessageIn[7] - 48) * 10 + (_radioMessageIn[8] - 48));
+                    year = (uint8_t)((_radioMessageIn[4] - 48) * 10 + (_radioMessageIn[5] - 48));
 
-                            if (year == 15) {
-                                setDateTime(year, month, day, hour, minute, second);
+                    //setDateTime(year, month, day, hour, minute, second);
 
-                                _realTimeClockSet = true;
-                            }
-
-                        }
-                    }
-
-
-                    // Received telemetry so pull out lat/lon/alt for positioning
-                    if (_radioMessageIn[0] == TELEMETRY_INDICATOR_CHAR){
-
-                        strcpy(_telemetryTemp, _radioMessageIn);
-
-                        if (splitCommandData(_telemetryTemp) == DATA_ARRAY_LEN) {
-                            _balloonPosition.lat = atof(_commandDataReceived[POS_LAT]);
-                            _balloonPosition.lon = atof(_commandDataReceived[POS_LON]);
-                            _balloonPosition.alt = atof(_commandDataReceived[POS_ALT]);
-
-                            if (!((_launchStationPosition.lat == 0.0) || (_balloonPosition.lat == 0.0))) {
-                                Calculate(_launchStationPosition, _balloonPosition, &_calculatedValuesBalloon);
-
-                                if (_calculatedValuesBalloon.elevation < -0.0) {
-                                    _calculatedValuesBalloon.elevation = -0.0;
-                                }
-
-
-                                if (!((_mobileStationPosition.lat == 0.0) || (_mobileStationPosition.lon == 0.0))) {
-                                    Calculate(_launchStationPosition, _mobileStationPosition, &_calculatedValuesStations);
-
-                                    if (_calculatedValuesStations.elevation < -0.0) {
-                                        _calculatedValuesStations.elevation = -0.0;
-                                    }
-                                }
-                            }
-
-                            //Serial.print(" Az: "); Serial.print(_calculatedValuesBalloon.azimuth);
-                            //Serial.print(" El: "); Serial.print(_calculatedValuesBalloon.elevation);
-
-                            //Serial.print(" Lat: "); Serial.print(_balloonPosition.lat);
-                            //Serial.print(" Lon: "); Serial.print(_balloonPosition.lon);
-                            //Serial.print(" Alt: "); Serial.print(_balloonPosition.alt);
-                            //Serial.print(" meters.");
-
-                            //Serial.print(" Ground: "); Serial.print(_calculatedValuesBalloon.distanceGround);
-                            //Serial.print(" Total: "); Serial.print(_calculatedValuesBalloon.distanceTotal);
-
-                            //Serial.print(" Peer: "); Serial.print(_calculatedValuesStations.distanceGround);
-
-                            //Serial.println();
-                        }
-                    }
-
-                    // Send out to field gateway
-                    Serial.println(_radioMessageIn);
+                    //_realTimeClockSet = true;
                 }
+                //}
+
+
+                // Received telemetry so pull out lat/lon/alt for positioning
+                if (_radioMessageIn[0] == TELEMETRY_INDICATOR_CHAR) {
+
+                    strcpy(_telemetryTemp, _radioMessageIn);
+
+                    if (splitCommandData(_telemetryTemp) == DATA_ARRAY_LEN) {
+                        _balloonPosition.lat = atof(_commandDataReceived[POS_LAT]);
+                        _balloonPosition.lon = atof(_commandDataReceived[POS_LON]);
+                        _balloonPosition.alt = atof(_commandDataReceived[POS_ALT]);
+
+                        //if (!((_launchStationPosition.lat == 0.0) || (_balloonPosition.lat == 0.0))) {
+                        if ((_launchStationPosition.lat != 0.0) && (_balloonPosition.lat != 0.0) && (_launchStationPosition.lon != 0.0) || (_balloonPosition.lon != 0.0)) {
+
+                            Calculate(_launchStationPosition, _balloonPosition, &_calculatedValuesBalloon);
+
+                            if (_calculatedValuesBalloon.elevation < -0.0) {
+                                _calculatedValuesBalloon.elevation = -0.0;
+                            }
+
+
+                            if ((_mobileStationPosition.lat != 0.0) && (_mobileStationPosition.lon != 0.0)) {
+                                Calculate(_launchStationPosition, _mobileStationPosition, &_calculatedValuesStations);
+
+                                if (_calculatedValuesStations.elevation < -0.0) {
+                                    _calculatedValuesStations.elevation = -0.0;
+                                }
+                            }
+                        }
+
+                        //Serial.print(" Az: "); Serial.print(_calculatedValuesBalloon.azimuth);
+                        //Serial.print(" El: "); Serial.print(_calculatedValuesBalloon.elevation);
+
+                        //Serial.print("\n>>> LLat: "); Serial.print(_launchStationPosition.lat);
+                        //Serial.print(" LLon: "); Serial.print(_launchStationPosition.lon);
+                        //Serial.print(" LAlt: "); Serial.print(_launchStationPosition.alt);
+                        //Serial.print(" meters.");
+
+                        //Serial.print("\n>>> Lat: "); Serial.print(_balloonPosition.lat);
+                        //Serial.print(" Lon: "); Serial.print(_balloonPosition.lon);
+                        //Serial.print(" Alt: "); Serial.print(_balloonPosition.alt);
+                        //Serial.print(" meters.");
+
+                        //Serial.print(" Ground: "); Serial.print(_calculatedValuesBalloon.distanceGround);
+                        //Serial.print(" Total: "); Serial.print(_calculatedValuesBalloon.distanceTotal);
+
+                        //Serial.print(" Peer: "); Serial.print(_calculatedValuesStations.distanceGround);
+
+                        //Serial.println();
+                    }
+                }
+
+                // Send out to field gateway
+                Serial.println(_radioMessageIn);
             }
         }
+
     }
 
     delay(10);

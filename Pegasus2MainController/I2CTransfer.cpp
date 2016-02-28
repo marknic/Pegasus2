@@ -46,81 +46,81 @@ uint8_t* I2CTransfer::get_i2c_data_packet(uint8_t* buffer, int length) {
 
 char* I2CTransfer::get_i2c_ascii_string(char* buffer, int length, int8_t* success ) {
 
-	if ((_file = open(DEVICE_NAME, O_RDWR)) < 0) {
-		fprintf(stderr, "I2C: Failed to access %d\n", DEVICE_NAME);
-		return (NULL);
-	}
+    if ((_file = open(DEVICE_NAME, O_RDWR)) < 0) {
+        fprintf(stderr, "I2C: Failed to access %d\n", DEVICE_NAME);
+        return (NULL);
+    }
 
-	    //printf("I2C: acquiring bus to 0x%x\n", _i2c_address);
+        //printf("I2C: acquiring bus to 0x%x\n", _i2c_address);
 
-	if (ioctl(_file, I2C_SLAVE, _i2c_address) < 0) {
-		fprintf(stderr, "I2C: Failed to acquire bus access/talk to slave 0x%x\n", _i2c_address);
+    if (ioctl(_file, I2C_SLAVE, _i2c_address) < 0) {
+        fprintf(stderr, "I2C: Failed to acquire bus access/talk to slave 0x%x\n", _i2c_address);
 
-		close(_file);
-		return (NULL);
-	}
+        close(_file);
+        return (NULL);
+    }
 
-	int readCount = length;
-	int bytesRead = 0;
-	int bufferPosition = 0;
-	int byteCountRead = 0;
-	int totalByteCountRead = 0;
+    int readCount = length;
+    int bytesRead = 0;
+    int bufferPosition = 0;
+    int byteCountRead = 0;
+    int totalByteCountRead = 0;
 
-	*success = I2C_TRANSFER_SUCCESS;
-	
-	if (length > MAX_I2C_DATA_LENGTH) {
+    *success = I2C_TRANSFER_SUCCESS;
+    
+    if (length > MAX_I2C_DATA_LENGTH) {
 
-		readCount = SENSOR_DATA_LENGTH;
+        readCount = SENSOR_DATA_LENGTH;
 
-		while (bufferPosition < length) {
+        while (bufferPosition < length) {
 
-			byteCountRead = read(_file, &buffer[bufferPosition], readCount);
-	
-			totalByteCountRead += byteCountRead;
-	        
-			bytesRead += readCount;
+            byteCountRead = read(_file, &buffer[bufferPosition], readCount);
+    
+            totalByteCountRead += byteCountRead;
+            
+            bytesRead += readCount;
 
-			bufferPosition += SENSOR_DATA_LENGTH;
+            bufferPosition += SENSOR_DATA_LENGTH;
 
-			if (bytesRead + SENSOR_DATA_LENGTH > length) {
-				readCount = length - bufferPosition;
-			}
+            if (bytesRead + SENSOR_DATA_LENGTH > length) {
+                readCount = length - bufferPosition;
+            }
 
-			usleep(10000);
-		}
-	}
-	else {
-		byteCountRead = read(_file, buffer, readCount);
-	    
-		totalByteCountRead += byteCountRead;
-	}
+            usleep(10000);
+        }
+    }
+    else {
+        byteCountRead = read(_file, buffer, readCount);
+        
+        totalByteCountRead += byteCountRead;
+    }
 
-	buffer[length] = '\0';
+    buffer[length] = '\0';
 
-	// data returned the right size?
-	if (totalByteCountRead != length)
-	{
-		*success = I2C_TRANSFER_LENGTH_MISMATCH;
-	}
-	
-	// check for non-printable characters
-	if (*success == I2C_TRANSFER_SUCCESS)
-	{
-		for (int i = 0; i < length; i++)
-		{
-			if ((buffer[i] < 32) || (buffer[i] > 127))
-			{
-				*success = I2C_TRANSFER_NON_PRINTABLE;
-				break;
-			}
-		}
-	}
+    // data returned the right size?
+    if (totalByteCountRead != length)
+    {
+        *success = I2C_TRANSFER_LENGTH_MISMATCH;
+    }
+    
+    // check for non-printable characters
+    if (*success == I2C_TRANSFER_SUCCESS)
+    {
+        for (int i = 0; i < length; i++)
+        {
+            if ((buffer[i] < 32) || (buffer[i] > 127))
+            {
+                *success = I2C_TRANSFER_NON_PRINTABLE;
+                break;
+            }
+        }
+    }
 
-	usleep(10000);
+    usleep(10000);
 
-	close(_file);
+    close(_file);
 
-	return (buffer);
+    return (buffer);
 }
 
 
@@ -144,8 +144,8 @@ char* I2CTransfer::get_i2c_string(char* buffer, int length) {
     int readCount = length;
     int bytesRead = 0;
     int bufferPosition = 0;
-	int byteCountRead = 0;
-	int totalByteCountRead = 0;
+    int byteCountRead = 0;
+    int totalByteCountRead = 0;
 
     if (length > MAX_I2C_DATA_LENGTH) {
 
@@ -153,10 +153,10 @@ char* I2CTransfer::get_i2c_string(char* buffer, int length) {
 
         while (bufferPosition < length) {
 
-	        byteCountRead = read(_file, &buffer[bufferPosition], readCount);
-	
-	        totalByteCountRead += byteCountRead;
-	        
+            byteCountRead = read(_file, &buffer[bufferPosition], readCount);
+    
+            totalByteCountRead += byteCountRead;
+            
             bytesRead += readCount;
 
             bufferPosition += SENSOR_DATA_LENGTH;
@@ -169,11 +169,11 @@ char* I2CTransfer::get_i2c_string(char* buffer, int length) {
         }
     }
     else {
-	    byteCountRead = read(_file, buffer, readCount);
-	    
-	    totalByteCountRead += byteCountRead;
+        byteCountRead = read(_file, buffer, readCount);
+        
+        totalByteCountRead += byteCountRead;
     }
-	
+    
     buffer[length] = '\0';
 
     usleep(10000);

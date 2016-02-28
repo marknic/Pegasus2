@@ -16,7 +16,7 @@
 #define SENSOR_DATA_LENGTH                      32
 #define SENSOR_DATA_TOTAL_LENGTH                64
 #define MAX_I2C_DATA_LENGTH                     32
-#define USER_MSG_MAX_LEN                        60
+#define USER_MSG_MAX_LEN                        64
 
 #define I2C_TRANSFER_SUCCESS					 0
 #define I2C_TRANSFER_NON_PRINTABLE              -1

@@ -105,8 +105,8 @@
 #define GPIO_PIN_BALLOON                     26  // BCM Pin 12
 #define GPIO_PIN_PARACHUTE                   22  // BCM Pin 6
 
-#define PIN_REMOVED_INDICATED                 1
-#define PIN_INSERTED_INDICATED                0
+#define PIN_REMOVED                           1
+#define PIN_INSERTED                          0
 
 
 #define DATA_ARRAY_COUNT                     39
@@ -123,7 +123,7 @@
 
 
 #define DEFAULT_SECONDS_TILL_RELEASE (150 * 60)   // 2.5 hours
-#define DEFAULT_ALTITUDE_FOR_DEPLOY        1700   // meters above launch height
+#define DEFAULT_ALTITUDE_FOR_DEPLOY      1700.0   // meters above launch height
 //#define DEFAULT_ALTITUDE_FOR_ARMING        3000   // meters above launch height
 
 #define FALL_LIMIT_SPEED                (-12.5)   // Speed the balloon must achieve to indicate a fall
@@ -152,7 +152,7 @@
 #define GPS_PROJECTION_DATA_FILE            "/home/pi/p2data/ProjectedGpsLocation.txt"
 #define IS_GPS								  1
 #define IS_PROC2							  2
-
+#define GPS_ALTITUDE_INVALID               -1.0
 
 #if (TEST_TELEMETRY) 
 

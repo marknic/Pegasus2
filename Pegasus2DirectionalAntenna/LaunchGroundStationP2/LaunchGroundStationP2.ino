@@ -330,6 +330,27 @@ void get_eeprom_data()
 }
 
 
+void reset_eeprom_values(int direction)
+{
+    Serial.println("Resetting the location and EEPROM values");
+
+    _doOffset = TRUE;
+
+    _launchOffsetDirection = direction;
+
+    _launchStationPosition.lat = 0.0;
+    _launchStationPosition.lon = 0.0;
+    _launchStationPosition.alt = 0.0;
+
+    EEPROM.put(LAT_LON_EEPROM_ADDRESS, _launchStationPosition);
+    EEPROM.put(GBANG_DO_OFFSET_ADDRESS, _doOffset);
+
+    _launchOffsetDirection = direction;
+    EEPROM.put(GBANG_OFFSET_DIRECTION_ADDRESS, _launchOffsetDirection);
+
+}
+
+
 void setup()
 {
     // Debug Console & external directional antenna controller
@@ -349,6 +370,9 @@ void setup()
     Serial3.begin(DIRECTIONAL_ANTENNA_SERIAL_BAUD_RATE);
 
     //pinMode(GPS_RESET_PIN, INPUT);
+
+    //  Uncomment the next line and run to reset the eeprom (lat/lon) values
+    //reset_eeprom_values(GPS_OFFSET_N);
 
     get_eeprom_data();
 
@@ -373,27 +397,6 @@ void setup()
 
     _timer.every(1000, watchdog_reset);
     _timer.every(2000, generateTelemetry);
-
-}
-
-
-void reset_eeprom_values(int direction)
-{
-    Serial.println("Resetting the location and EEPROM values");
-
-    _doOffset = TRUE;
-
-    _launchOffsetDirection = direction;
-
-    _launchStationPosition.lat = 0.0;
-    _launchStationPosition.lon = 0.0;
-    _launchStationPosition.alt = 0.0;
-
-    EEPROM.put(LAT_LON_EEPROM_ADDRESS, _launchStationPosition);
-    EEPROM.put(GBANG_DO_OFFSET_ADDRESS, _doOffset);
-
-    _launchOffsetDirection = direction;
-    EEPROM.put(GBANG_OFFSET_DIRECTION_ADDRESS, _launchOffsetDirection);
 
 }
 
@@ -648,6 +651,7 @@ void loop()
                             if (_calculatedValuesBalloon.elevation < -0.0) {
                                 _calculatedValuesBalloon.elevation = 0.0;
                             }
+
                             // Send data to the other antenna and move it
                             send_data_to_video_antenna();
                         }

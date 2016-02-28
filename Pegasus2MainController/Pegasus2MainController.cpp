@@ -30,12 +30,19 @@
 
 
 // Prototypes
-void process_gps_data1(char* dataLine);
-void process_gps_data2(char* dataLine);
+void process_gps1_data(char* dataLine);
+void process_gps1_invalid_data(char* dataLine);
+void process_gps2_data(char* dataLine);
+void process_gps2_invalid_data(char* dataLine);
+
 void process_radio_data(char* dataLine);
+void process_radio_invalid_data(char* dataLine);
+void process_mc2_data(char* dataLine);
+void process_mc2_invalid_data(char* dataLine);
+
+
 int processCommand(char *msg);
 void switch_leds(bool onOff);
-void process_proc2_data(char* dataLine);
 int send_craft_message(int index, int value);
 char* format_timestamp(char* timestampDest);
 char* format_timestamp_with_milliseconds(char* timestampDest);
@@ -50,7 +57,7 @@ int test_uart_streams(char uartNumber);
 // Variables
 int _telemetry_sent_count = 0;     //  <<<<<<<<<<<<<<<<<<<<<
 
-Timer _timer;
+//Timer _timer;
 
 I2CTransfer _subProc1(ADDRESS_SUBPROC_1);
 I2CTransfer _subProc3(ADDRESS_SUBPROC_3);
@@ -142,17 +149,24 @@ double _vertical_speed = 0.0;
 
 int _minutes_till_release = (DEFAULT_SECONDS_TILL_RELEASE / 60);
 int _seconds_till_release = DEFAULT_SECONDS_TILL_RELEASE;
-int _altitude_for_deploy = DEFAULT_ALTITUDE_FOR_DEPLOY;
+double _altitude_for_deploy = DEFAULT_ALTITUDE_FOR_DEPLOY;
+
 //bool _craft_armed = FALSE;
 
 time_t _initial_time;
 time_t _current_time;
 
-bool _balloon_released = FALSE;
+//bool _balloon_released = FALSE;
 
 int _telemetry_count = 0;
 
 MessageValidation _messageValidator;
+
+
+double _gps1_altitude = -1.0;
+double _gps2_altitude = -1.0;
+uint8_t _gps1_gotFix = 0;
+uint8_t _gps2_gotFix = 0;
 
 
 char _proc1SensorBuffer[PROC1_BUFFER_LEN];
@@ -254,7 +268,7 @@ void safety_switch_check() {
     int parachute_and_balloon = _balloonSwitchValue & _parachuteSwitchValue;
 
     if (_safetySwitchValue != _safety_switch_was) {
-        sprintf(_tmp_log_data, "SafetySwitch: %d", _safetySwitchValue);
+        sprintf(_tmp_log_data, "SafetySwitch: %d\n", _safetySwitchValue);
         write_to_log("SSW", _tmp_log_data);
     }
 
@@ -262,7 +276,7 @@ void safety_switch_check() {
     
     // balloon and parachute pins removed and safety pin newly inserted -> shutdown
     //                                   1                                                     1                                             0
-    if ((parachute_and_balloon == PIN_REMOVED_INDICATED) && (_safety_switch_was == PIN_REMOVED_INDICATED) && (_safetySwitchValue == PIN_INSERTED_INDICATED)) {
+    if ((parachute_and_balloon == PIN_REMOVED) && (_safety_switch_was == PIN_REMOVED) && (_safetySwitchValue == PIN_INSERTED)) {
         printf("Initiate Shutdown!\n");
 
         system("sudo shutdown -h now");
@@ -270,13 +284,13 @@ void safety_switch_check() {
     else {
         // balloon or para inserted and safety pin newly inserted
         //                                       0                                                 0                                               1
-        if ((parachute_and_balloon == PIN_INSERTED_INDICATED) && (_safetySwitchValue == PIN_INSERTED_INDICATED) && (_safety_switch_was == PIN_REMOVED_INDICATED)) {
+        if ((parachute_and_balloon == PIN_INSERTED) && (_safetySwitchValue == PIN_INSERTED) && (_safety_switch_was == PIN_REMOVED)) {
             printf("Turn LED's Off!\n");
 
             switch_leds(FALSE);
         }
         else { //                                    0                                                1                                                0
-            if ((parachute_and_balloon == PIN_INSERTED_INDICATED) && (_safetySwitchValue == PIN_REMOVED_INDICATED) && (_safety_switch_was == PIN_INSERTED_INDICATED)) {
+            if ((parachute_and_balloon == PIN_INSERTED) && (_safetySwitchValue == PIN_REMOVED) && (_safety_switch_was == PIN_INSERTED)) {
                 printf("Turn LED's On!\n");
 
                 switch_leds(TRUE);
@@ -298,9 +312,11 @@ void safety_switch_check() {
 void evaluate_data() {
 
     static uint8_t fall_counter = 0;
-    static uint8_t parachute_deploy_attempts = 0;
-
-    if (_warmupPeriodOver) {
+    static time_t previous_time;
+    
+    
+    // If initial warmup period is over AND the safety switch pin is removed
+    if ((_warmupPeriodOver) && (_safetySwitchValue == PIN_REMOVED)) {
 
         if ((_initialAltitude == 0.0) && (_current_altitude != 0.0)) {
             _initialAltitude = _current_altitude;
@@ -312,7 +328,7 @@ void evaluate_data() {
             // Start the timer
             _initial_time = _current_time;
 
-            if (altDif > 20.0) {
+            if (altDif > 200.0) {
                 send_craft_message(LIFTOFF_POS, MESSAGE_NO_VALUE);
                 _subProc3.send_command(PROC3_COMMAND_GOING_UP);
             }
@@ -390,17 +406,72 @@ void evaluate_data() {
         //    _craft_armed = TRUE;
         //    send_craft_message(CRAFT_ARMED_POS, MESSAGE_NO_VALUE);
         //}
+        
+        uint8_t below_altitude_limit = FALSE;
+        
+        // Check GPS 1 to see if the altitude is below the lower limit
+        if (_gps1_gotFix && (_gps1_altitude > 0.0))
+        {
+            below_altitude_limit = _gps1_altitude <= (_initialAltitude + _altitude_for_deploy);
+        }
+        else  // If GPS 1 (No Fix or invalid altitude) Check GPS 2 to see if the altitude is below the lower limit
+            if (_gps2_gotFix && (_gps2_altitude > 0.0))
+        {
+            below_altitude_limit = _gps2_altitude <= (_initialAltitude + _altitude_for_deploy);
+        }
+        
+        // Now, if GPS 1&2 are not showing an altitude below the lower limit then do final validation with the air pressure altitude
+        if (below_altitude_limit == FALSE) {
+            below_altitude_limit = _current_altitude <= (_initialAltitude + _altitude_for_deploy);
+        }
 
-        if ((_vertical_speed <= FALL_LIMIT_SPEED) && (_current_altitude <= (_initialAltitude + _altitude_for_deploy))) {
 
-            if (fall_counter++ >= 3) {
-                if ((_balloon_released == FALSE) || (_balloonSwitchValue != PIN_REMOVED_INDICATED))
+        // After launch (_safetySwitchValue == PIN_REMOVED) AND balloon attached and/or parachute not deployed AND falling AND below the lower safety altitude 
+        if ((_safetySwitchValue == PIN_REMOVED) && ((_balloonSwitchValue == PIN_INSERTED) ||
+            (_parachuteSwitchValue == PIN_INSERTED)) && (_vertical_speed <= FALL_LIMIT_SPEED) && below_altitude_limit) {
+
+            //write_to_log("EVAL", "Fall detected\n");
+            printf("EVAL, Fall detected\n");
+
+            if (fall_counter == 0)
+            {
+                fall_counter++;
+                previous_time = _current_time;
+            }
+            else
+            {
+                if (previous_time > _current_time - 4)
                 {
+                    fall_counter++;
+                    previous_time = _current_time;
+                    //printf("Incremented Fall Counter: %d  i=%d\n", fall_counter, i);
+                }
+                else
+                {
+                    //printf("Resetting Fall Counter i=%d\n", i);
+                    fall_counter = 0;
+                }
+            }
+
+            if ((fall_counter >= 3) && (fall_counter < 6)) {
+                if (_balloonSwitchValue != PIN_REMOVED)
+                {
+                    //printf("EVAL, evaluate_data: falling, release balloon now!\n");
+                    //printf("evaluate_data: falling, release balloon now!\n");
+                    //printf(">>>> release_balloon_now();\n");
+
+                    write_to_log("EVAL", "evaluate_data: falling, release balloon now!\n");
                     debug_print("evaluate_data: falling, release balloon now!");
                     release_balloon_now();
                 }
 
-                if (parachute_deploy_attempts++ < 3) {
+                if (_parachuteSwitchValue == PIN_INSERTED) {
+                    
+                    //printf("EVAL, evaluate_data: falling, deploy parachute now!\n");
+                    //printf("evaluate_data: falling, deploy parachute now!\n");
+                    //printf(">>>> deploy_parachute_now();\n");
+
+                    write_to_log("EVAL", "evaluate_data: falling, deploy parachute now!\n");
                     debug_print("evaluate_data: falling, deploy parachute now!");
                     deploy_parachute_now();
                 }
@@ -408,13 +479,15 @@ void evaluate_data() {
         }
 
         if ((_current_time - _initial_time) >= _seconds_till_release) {
-            if (_balloon_released == FALSE) {
+            if (_balloonSwitchValue != PIN_REMOVED) {
+                write_to_log("EVAL", "evaluate_data: time limit relase balloon now!\n");
                 debug_print("evaluate_data: time limit relase balloon now!");
                 release_balloon_now();
             }
         }
     }
 }
+
 
 
 /**
@@ -475,10 +548,10 @@ bool starts_with(char* stringToCheck, char* startsWith)
 
 
 /**
-* \fn process_gps_data1
+* \fn process_gps1_data
 * \brief convert the incoming raw GPS data to a usable format
 */
-void process_gps_data1(char* dataLine) {
+void process_gps1_data(char* dataLine) {
 
     if ((dataLine == NULL) || (!starts_with(dataLine, "$GPRMC") && !starts_with(dataLine, "$GPGGA"))) return;
     
@@ -499,6 +572,18 @@ void process_gps_data1(char* dataLine) {
         if (speed < 1.0) {
             speed = 0.1;
         }
+        
+        _gps1_gotFix = _gps1_data->getFix();
+        double alt = _gps1_data->getAltitude();
+        
+        if (_gps1_gotFix && (alt > 0.0))
+        {
+            _gps1_altitude = alt;
+        }
+        else
+        {
+            _gps1_altitude = GPS_ALTITUDE_INVALID;
+        }
 
         _gpsLat1 = _gps1_data->getLatitude();
 
@@ -506,20 +591,24 @@ void process_gps_data1(char* dataLine) {
             "%7.5f,%7.5f,%3.1f,%3.1f,%3.1f,%d,%d",
             _gpsLat1,
             _gps1_data->getLongitude(),
-            _gps1_data->getAltitude(),
+            alt,
             speed,
             _gps1_data->getDirection(),
-            _gps1_data->getFix(),
+            _gps1_gotFix,
             _gps1_data->getSatellites());
     }
 }
 
+void process_gps1_invalid_data(char* dataLine) {
+    write_to_log("GP1-Invalid", dataLine);
+}
+
 
 /**
-* \fn process_gps_data2
+* \fn process_gps2_data
 * \brief convert the incoming raw GPS data to a usable format
 */
-void process_gps_data2(char* dataLine) {
+void process_gps2_data(char* dataLine) {
 
     if ((dataLine == NULL) || (!starts_with(dataLine, "$GPRMC") && !starts_with(dataLine, "$GPGGA"))) return;
     
@@ -537,19 +626,37 @@ void process_gps_data2(char* dataLine) {
         if (speed < 1.0) {
             speed = 0.2;
         }
+        
+        _gps2_gotFix = _gps1_data->getFix();
+        double alt = _gps1_data->getAltitude();
+        
+        if (_gps2_gotFix && (alt > 0.0))
+        {
+            _gps2_altitude = alt;
+        }
+        else
+        {
+            _gps2_altitude = GPS_ALTITUDE_INVALID;
+        }
+
 
         _gpsLat2 = _gps2_data->getLatitude();
 
         sprintf(_gpsDataString2, "%7.5f,%7.5f,%3.1f,%3.1f,%3.1f,%d,%d",
             _gpsLat2,
             _gps2_data->getLongitude(),
-            _gps2_data->getAltitude(),
+            alt,
             speed,
             _gps2_data->getDirection(),
-            _gps2_data->getFix(),
+            _gps2_gotFix,
             _gps2_data->getSatellites());
     }
 }
+
+void process_gps2_invalid_data(char* dataLine) {
+    write_to_log("GP2-Invalid", dataLine);
+}
+
 
 
 
@@ -559,7 +666,7 @@ void process_gps_data2(char* dataLine) {
 */
 void process_radio_data(char* dataLine) {
 
-    write_to_log("RD1", dataLine);
+    write_to_log("RADIO", dataLine);
 
     int len = strlen(dataLine);
 
@@ -579,7 +686,9 @@ void process_radio_data(char* dataLine) {
     }
 }
 
-
+void process_radio_invalid_data(char* dataLine) {
+    write_to_log("RADIO-Invalid", dataLine);
+}
 
 /**
 * \fn smooth
@@ -793,12 +902,12 @@ sprintf(sensorData, "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s",
 */
 
 /**
-* \fn process_proc2_data
+* \fn process_mc2_data
 * \brief Process incoming MicroController #2 data (sensor telemetry)
 */
-void process_proc2_data(char* dataLine) {
+void process_mc2_data(char* dataLine) {
 
-    char dataToLog[256];
+    char dataToLog[1024];
     
     strcpy(dataToLog, dataLine);
     
@@ -814,6 +923,10 @@ void process_proc2_data(char* dataLine) {
  
     write_to_log("MC2", dataToLog);
 
+}
+
+void process_mc2_invalid_data(char* dataLine) {
+    write_to_log("MC2-Invalid", dataLine);
 }
 
 
@@ -848,6 +961,7 @@ char* get_subproc1_sensor_data() {
     char errorBuffer[128];
     
     sprintf(infoBufferValues, "MC1 Packet Info: Total Len Requested: %d -- Full Packets: %d -- Partial Size: %d \n", packetInfoBuffer[0], packetInfoBuffer[1], packetInfoBuffer[2]);
+    write_to_log("MC1-Info", infoBufferValues);
     
     if (packetInfoBuffer[1] > 1)
     {
@@ -949,7 +1063,7 @@ void initialize_log(char* filename)
 void write_to_log(const char* source, char* data) {
 
     char timestamp[36];
-    char telemetry_string[256];
+    //char telemetry_string[256];
 
     FILE* fp;
     
@@ -978,7 +1092,7 @@ void write_to_log(const char* source, char* data) {
 void write_to_log_nl(const char* source, char* data) {
 
     char timestamp[36];
-    char telemetry_string[256];
+    //char telemetry_string[256];
 
     FILE* fp;
     
@@ -1106,10 +1220,12 @@ void send_telemetry() {
             gpsDataPtr = _lastGpsDataString;
         }
         else {
+            strcpy(_lastGpsDataString, _gpsDataString2);
             gpsDataPtr = _gpsDataString2;
         }
     }
     else {
+        strcpy(_lastGpsDataString, _gpsDataString1);
         gpsDataPtr = _gpsDataString1;
     }
 #else 
@@ -1282,7 +1398,7 @@ sprintf(sensorData, "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s",
 
 */
     //                                                        |                      |                  |                        |            |  |                  |
-    sprintf(_telemetry_data_string, "$:%s,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%d,%d,%s,%d,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%s,%s,%d,%.1f,%d,%.1f,%d,%d,%d,%d,%d",
+    sprintf(_telemetry_data_string, "$:%s,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%d,%d,%s,%d,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%s,%s,%d,%.1f,%d,%.1f,%d,%d,%d,%.1f,%d",
         format_timestamp(_timestamp),                                               //  1 - timestamp
         pressure,                                                                   //  2 - air pressure
         _current_altitude,                                                          //  3 - altitude
@@ -1352,7 +1468,7 @@ sprintf(sensorData, "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s",
     //printf("Telem: %s\n", _telemetry_data_string);
     printf("TelemetryCount: %d\n", ++_telemetry_count);
 
-    printf("air: %f | alt: %f | PresTmp: %f | Humidity: %f | Tmp36: %f | Thermo: %f | ReceptErrs: %d\n", 
+    printf("air: %f | alt: %.1f | PresTmp: %f | Humidity: %f | Tmp36: %f | Thermo: %f | ReceptErrs: %d\n", 
         pressure,
         _current_altitude,
         pressureTemp,
@@ -1361,7 +1477,7 @@ sprintf(sensorData, "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s",
         thermoCouple,
         _messageValidator.getReceptionErrorCount());
     printf("VMain: %f | VAux: %f\n", voltageMain, voltageAux);
-    printf("Geiger: %s | UV: %f | PicCount: %d | LedsOn: %d | AltDeploy: %d | MinToRelease: %d\n", geiger, uv, _pictureCount, _ledsOnOff, _altitude_for_deploy, _minutes_till_release);
+    printf("Geiger: %s | UV: %f | PicCount: %d | LedsOn: %d | AltDeploy: %.1f | MinToRelease: %d\n", geiger, uv, _pictureCount, _ledsOnOff, _altitude_for_deploy, _minutes_till_release);
     
     char gps1Attached[2];
     if (_gps_data1_attached) { strcpy(gps1Attached, "Y"); } else { strcpy(gps1Attached, "N"); }
@@ -1490,8 +1606,6 @@ int release_balloon_now() {
     
     _subProc1.send_command(PROC1_COMMAND_RELEASE_BALLOON);
 
-    _balloon_released = TRUE;
-
     printf("Releasing Balloon NOW!\n");
 
     send_craft_message(BALLOON_RELEASED_POS, MESSAGE_NO_VALUE);
@@ -1521,7 +1635,7 @@ int release_balloon_now() {
 
     counter++;
 
-    sprintf(_tmp_log_data, "Release Balloon: %d", counter);
+    sprintf(_tmp_log_data, "Release Balloon: %d\n", counter);
 
     write_to_log("BAP", _tmp_log_data);
 
@@ -1556,7 +1670,7 @@ int release_balloon_time(int minutesTillRelease) {
 
     counter++;
 
-    sprintf(_tmp_log_data, "Set Balloon Release Time: %d  -  %d", minutesTillRelease, counter);
+    sprintf(_tmp_log_data, "Set Balloon Release Time: %d  -  %d\n", minutesTillRelease, counter);
 
     write_to_log("BAP", _tmp_log_data);
 
@@ -1586,7 +1700,7 @@ int deploy_parachute_now() {
 
     counter++;
 
-    sprintf(_tmp_log_data, "Deploy Parachute: %d", counter);
+    sprintf(_tmp_log_data, "Deploy Parachute: %d\n", counter);
 
     write_to_log("BAP", _tmp_log_data);
     
@@ -1709,7 +1823,7 @@ int display_user_message(char* msg) {
 
     counter++;
 
-    sprintf(_tmp_log_data, "User Message: %s  -  %d", msg, counter);
+    sprintf(_tmp_log_data, "User Message: %s  -  %d\n", msg, counter);
 
     write_to_log("MSG", _tmp_log_data);
 
@@ -2049,7 +2163,6 @@ void TestStep()
     {
         return;
     }
-
 }
 
 #endif
@@ -2060,28 +2173,28 @@ void initialize_serial_devices()
     
     if (test_uart_streams('3') == IS_GPS)
     {
-        _serialStream_Gps1 = new UartStream('3', process_gps_data1, FALSE, "GPS 1");
-        _serialStream_Radio = new UartStream('2', process_radio_data, TRUE, "Radio Modem");
-        write_to_log("InitDevices", "GPS1-3, Radio-2\n");
+        _serialStream_Gps1 = new UartStream('3', process_gps1_data, process_gps1_invalid_data, FALSE, "GPS 1");
+        _serialStream_Radio = new UartStream('2', process_radio_data, process_radio_invalid_data, TRUE, "Radio Modem");
+        write_to_log("InitDevices", "\nGPS1-3, Radio-2\n");
     }
     else
     {
-        _serialStream_Gps1 = new UartStream('2', process_gps_data1, FALSE, "GPS 1");
-        _serialStream_Radio = new UartStream('3', process_radio_data, TRUE, "Radio Modem");
-        write_to_log("InitDevices", "GPS1-2, Radio-3\n");
+        _serialStream_Gps1 = new UartStream('2', process_gps1_data, process_gps1_invalid_data, FALSE, "GPS 1");
+        _serialStream_Radio = new UartStream('3', process_radio_data, process_radio_invalid_data, TRUE, "Radio Modem");
+        write_to_log("InitDevices", "\nGPS1-2, Radio-3\n");
     }
 
     if (test_uart_streams('1') == IS_GPS)
     {
-        _serialStream_subProc2 = new UartStream('0', process_proc2_data, FALSE, "MicroController 2");
-        _serialStream_Gps2 = new UartStream('1', process_gps_data2, FALSE, "GPS 2");
-        write_to_log("InitDevices", "GPS2-1, Proc2-0\n");
+        _serialStream_subProc2 = new UartStream('0', process_mc2_data, process_mc2_invalid_data, FALSE, "MicroController 2");
+        _serialStream_Gps2 = new UartStream('1', process_gps2_data, process_gps2_invalid_data, FALSE, "GPS 2");
+        write_to_log("InitDevices", "GPS2-1, Proc2-0\n\n");
     }
     else
     {
-        _serialStream_subProc2 = new UartStream('1', process_proc2_data, FALSE, "MicroController 2");
-        _serialStream_Gps2 = new UartStream('0', process_gps_data2, FALSE, "GPS 2");
-        write_to_log("InitDevices", "GPS2-0, Proc2-1\n");
+        _serialStream_subProc2 = new UartStream('1', process_mc2_data, process_mc2_invalid_data, FALSE, "MicroController 2");
+        _serialStream_Gps2 = new UartStream('0', process_gps2_data, process_gps2_invalid_data, FALSE, "GPS 2");
+        write_to_log("InitDevices", "GPS2-0, Proc2-1\n\n");
     }
 }
 
@@ -2312,7 +2425,7 @@ int main(int argc, char *argv [])
 
         received0 = _serialStream_Radio->uart_receive();
 
-        usleep(1000);
+        usleep(10000);
     }
 
     return 0;

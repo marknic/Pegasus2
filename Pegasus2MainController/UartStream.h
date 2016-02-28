@@ -8,6 +8,7 @@
 #include "GpsProcessor.h"
 
 #define UART_DATA_BUFFER_LEN        1024
+#define UART_DATA_BUFFER_XTRA       128
 #define UART_DATA_LEN_MAX           (UART_DATA_BUFFER_LEN - 1)
 #define HIGH_SPEED                  (B38400 | CS8 | CLOCAL | CREAD)
 #define LOW_SPEED                   (B9600 | CS8 | CLOCAL | CREAD)
@@ -24,6 +25,7 @@ private:
     int buffer_position;
     
     void(*process_data)(char*);
+    void(*invalid_data)(char*);
 
     char dataBuffer[UART_DATA_BUFFER_LEN];
     char dataLine[UART_DATA_BUFFER_LEN];
@@ -43,6 +45,7 @@ public:
     UartStream(char usbNumber, void(*processDataFunction) (char*));
     UartStream(char usbNumber, void(*processDataFunction) (char*), bool highSpeed);
     UartStream(char usbNumber, void(*processDataFunction) (char*), bool highSpeed, char* usbName);
+    UartStream(char usbNumber, void(*processDataFunction)(char*), void(*invalidDataFunction)(char*), bool highSpeed, char* usbName);
 
     UartStream();
     ~UartStream();

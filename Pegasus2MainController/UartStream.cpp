@@ -5,6 +5,32 @@ UartStream::UartStream() {
 
 }
 
+
+UartStream::UartStream(char usbNumber, void(*processDataFunction)(char*), void(*invalidDataFunction)(char*), bool highSpeed, char* usbName) {
+
+    if (highSpeed) {
+        speed_flag = HIGH_SPEED;
+    }
+    else {
+        speed_flag = LOW_SPEED;
+    }
+
+    Initialize(usbNumber);
+
+    process_data = processDataFunction;
+    invalid_data = invalidDataFunction;
+    
+    int len = strlen(usbName);
+
+    if (len >= USB_NAME_MAX_LEN) {
+        strncpy(_usb_name, usbName, USB_NAME_MAX_LEN - 1);
+    }
+    else {
+        strcpy(_usb_name, usbName);
+    }
+}
+
+
 UartStream::UartStream(char usbNumber, void(*processDataFunction) (char*), bool highSpeed, char* usbName) {
 
     if (highSpeed) {
@@ -207,14 +233,24 @@ int UartStream::uart_receive() {
             int i;
             for (i = 0; i < rx_length; i++) {
 
+                // Invalid data
                 if ((buffer_position + 1) >= UART_DATA_LEN_MAX) {
-                    printf("maybe over\n");
-
+                    printf("Handling invalid data from UART\n");
+                    
+                    memcpy(dataLine, dataBuffer, buffer_position);
+                    dataLine[buffer_position] = 0;
+                        
                     buffer_position = 0;
-                }
+
+                    if (invalid_data != NULL)
+                    {
+                        invalid_data(dataLine);
+                    }
+                 }
 
                 dataBuffer[buffer_position++] = rx_buffer[i];
-                
+
+                // Handle end of line and (hopefully) good data
                 if (rx_buffer[i] == '\n') {
                     // Shift buffer to line storage
                     memcpy(dataLine, dataBuffer, buffer_position);
