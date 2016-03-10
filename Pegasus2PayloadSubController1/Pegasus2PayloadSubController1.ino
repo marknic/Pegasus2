@@ -14,26 +14,26 @@
 
 
 // SSC32 "Pins" (Servo Positions)
-#define SERVO_BAL_PIN                   0   // Output: PWM pin for controlling the balloon release servo
-#define SERVO_PARA_PIN                  1   // Output: PWM pin for controlling the parachute deployment servo
-#define SERVO_VID_PIN                   2   // Output: PWM pin for controlling the video camera position servo 
+#define SERVO_BAL_PIN                         0   // Output: PWM pin for controlling the balloon release servo
+#define SERVO_PARA_PIN                        1   // Output: PWM pin for controlling the parachute deployment servo
+#define SERVO_VID_PIN                         2   // Output: PWM pin for controlling the video camera position servo 
 
 
 // UV Sensor pin definitions
-#define UV_UVOUT_PIN                   A0   // Input: Analog pin used to gather the UV sensor values
-#define ARDUINO_REF_3V3                A1   // Input: Analog pin used to measure accuracy of the 3.3V power on the Arduino board
+#define UV_UVOUT_PIN                         A0   // Input: Analog pin used to gather the UV sensor values
+#define ARDUINO_REF_3V3                      A1   // Input: Analog pin used to measure accuracy of the 3.3V power on the Arduino board
 
-#define BATTERY_LEVEL_AUX_PIN          A2   // Input: Analog pin for measuring the auxilliary battery voltage
-#define BATTERY_LEVEL_MAIN_PIN         A3   // Input: Analog pin for measuring the main battery voltage
+#define BATTERY_LEVEL_AUX_PIN                A2   // Input: Analog pin for measuring the auxilliary battery voltage
+#define BATTERY_LEVEL_MAIN_PIN               A3   // Input: Analog pin for measuring the main battery voltage
 
-#define TEMP_IN_THERMISTOR_PIN         A4   // Input: Analog pin for measuring the inside temperature thermistor
-#define TEMP_OUT_THERMISTOR_PIN        A5   // Input: Analog pin for measuring the outside temperature thermistor
+#define TEMP_IN_THERMISTOR_PIN               A4   // Input: Analog pin for measuring the inside temperature thermistor
+#define TEMP_OUT_THERMISTOR_PIN              A5   // Input: Analog pin for measuring the outside temperature thermistor
 
-#define BATTERY_VOLTAGE_FULL_MAIN     8.4   // Voltage level of a full battery (used to calc current voltage)
-#define BATTERY_VOLTAGE_FULL_AUX      8.4   // Voltage level of a full battery (used to calc current voltage)
-#define ADC_HIGH_VALUE              902.0   // Adjusted, high value for the ADC pins
+#define BATTERY_VOLTAGE_FULL_MAIN           8.4   // Voltage level of a full battery (used to calc current voltage)
+#define BATTERY_VOLTAGE_FULL_AUX            8.4   // Voltage level of a full battery (used to calc current voltage)
+#define ADC_HIGH_VALUE                    902.0   // Adjusted, high value for the ADC pins
 
-#define I2C_ADDRESS                  0x04
+#define I2C_ADDRESS                        0x04
 
 #define SERVO_LAUNCH_POSITION_BALLOON      2000   
 #define SERVO_RETRACT_POSITION_BALLOON     1300
@@ -55,9 +55,19 @@
 
 #define REFERENCE_VOLTAGE                  4.96
 
-#define RELAY_TIMER_UNDEFINED                -1
-#define RELAY_TIMER_DELAY_MS               4000
-#define SERVO_TIMER_DELAY_MS                200
+
+#define COMMAND_RELEASE_BALLOON               1
+#define COMMAND_DEPLOY_PARACHUTE              2
+#define COMMAND_POSITION_VIDEO_OUT            3
+#define COMMAND_POSITION_VIDEO_UP             4
+
+#define COMMAND_RESET_DATA_TRANSFER           5
+
+#define COMMAND_RESET_BALLOON                 6
+#define COMMAND_RESET_PARACHUTE               7
+
+#define COMMAND_RESET_SERVOS                  9
+
 
 #ifndef TRUE
 #define TRUE    (1==1)
@@ -78,8 +88,6 @@ void deployParachute();
 void positionCamera(bool);
 
 float calcBatteryLevel(int batteryLevel, float initialLevel);
-
-int averageAnalogRead(int pinToRead);
 
 void positionVidServoUp();
 void positionVidServoOut();
@@ -105,6 +113,7 @@ char _geiger_values[7][DATA_ARRAY_STR_LEN];
 char _uvIntensityString[6];
 
 Timer _timer;
+
 //Thermistor _thermistor_in(9950, REFERENCE_VOLTAGE);
 //Thermistor _thermistor_out(9960, REFERENCE_VOLTAGE);
 
@@ -173,17 +182,6 @@ void watchdog_reset() {
     wdt_reset();
 }
 
-#define COMMAND_RELEASE_BALLOON         1
-#define COMMAND_DEPLOY_PARACHUTE        2
-#define COMMAND_POSITION_VIDEO_OUT      3
-#define COMMAND_POSITION_VIDEO_UP       4
-
-#define COMMAND_RESET_DATA_TRANSFER     5
-
-#define COMMAND_RESET_BALLOON           6
-#define COMMAND_RESET_PARACHUTE         7
-
-#define COMMAND_RESET_SERVOS            9
 
 // callback for received data
 void receiveData(int byteCount){
@@ -416,6 +414,7 @@ void doSensorSamples() {
     float batteryVoltageMain = calcBatteryLevel(batteryLevelMain, BATTERY_VOLTAGE_FULL_MAIN);
     float batteryVoltageVid = calcBatteryLevel(batteryLevelVid, BATTERY_VOLTAGE_FULL_AUX);
 
+
     int bvmTransferValue = (int) (batteryVoltageMain * 10.0);
     int bvaTransferValue = (int) (batteryVoltageVid * 10.0);
 
@@ -423,13 +422,9 @@ void doSensorSamples() {
     _uvLevelAverage.addValue(analogRead(UV_UVOUT_PIN));
     _refLevelAverage.addValue(analogRead(ARDUINO_REF_3V3));
 
-    //int uvLevel = averageAnalogRead(UV_UVOUT_PIN);
-    //int refLevel = averageAnalogRead(ARDUINO_REF_3V3);
-
     float refLevel = _refLevelAverage.getAverage();
 
     //Use the 3.3V power pin as a reference to get a very accurate output value from sensor
-    //float outputVoltage = 3.3 / refLevel * uvLevel;
     float outputVoltage = 3.3 / refLevel * _uvLevelAverage.getAverage();
 
     float calculatedUvIntensity = mapfloat(outputVoltage, 0.99, 2.9, 0.0, 15.0);
@@ -453,11 +448,12 @@ void doSensorSamples() {
         strcpy(_geiger_values[5], "0");
     }
 
+    // 2016-02-23T15:30:32.283Z,990,990,0,0,84,78,673,0.87,0, 0, 18, 0.10
     sprintf(_sensorData, "990,990,0,0,%d,%d,%d,%s,%d,%s,%s,%s",
-        //tempInTransferValue, tempOutTransferValue,          // Temp In/Out
+        //tempInTransferValue, tempOutTransferValue,            // Temp In/Out
         //_balloonParachuteRelayOn, _vidRelayOn,                // Relays On/Off
-        bvmTransferValue, bvaTransferValue,                 // Battery Voltage times 10 (int)
-        (int)refLevel, _uvIntensityString,                        // Reference Level, 
+        bvmTransferValue, bvaTransferValue,                     // Battery Voltage times 10 (int)
+        (int)refLevel, _uvIntensityString,                      // Reference Level, 
         _vidCameraUp, _geiger_values[1], _geiger_values[3], _geiger_values[5]);
 
     Serial.println(_sensorData);

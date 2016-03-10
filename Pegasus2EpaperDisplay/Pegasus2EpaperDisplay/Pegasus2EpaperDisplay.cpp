@@ -144,7 +144,7 @@ int build_rows(int wordCount) {
     // Clear the rows
     for (i = 0; i < ROW_COUNT; i++) {
         rows[i][0] = '\0';
-	    memset((void*)&rows[i][0], 0, DATA_ARRAY_STR_LEN);
+        memset((void*)&rows[i][0], 0, DATA_ARRAY_STR_LEN);
     }
 
     for (i = 0; i < wordCount; i++) {

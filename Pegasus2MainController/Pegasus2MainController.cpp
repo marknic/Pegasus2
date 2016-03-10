@@ -275,21 +275,23 @@ void safety_switch_check() {
     display_switch_values();
     
     // balloon and parachute pins removed and safety pin newly inserted -> shutdown
-    //                                   1                                                     1                                             0
+    //                                   1                                    1                                      0
     if ((parachute_and_balloon == PIN_REMOVED) && (_safety_switch_was == PIN_REMOVED) && (_safetySwitchValue == PIN_INSERTED)) {
         printf("Initiate Shutdown!\n");
-
+        
+        write_to_log("SSW", "Initiate Shutdown! -- sudo shutdown -h now being executed\n");
+        
         system("sudo shutdown -h now");
     }
     else {
         // balloon or para inserted and safety pin newly inserted
-        //                                       0                                                 0                                               1
+        //                                  0                                      0                                       1
         if ((parachute_and_balloon == PIN_INSERTED) && (_safetySwitchValue == PIN_INSERTED) && (_safety_switch_was == PIN_REMOVED)) {
             printf("Turn LED's Off!\n");
 
             switch_leds(FALSE);
         }
-        else { //                                    0                                                1                                                0
+        else { //                               0                                      1                                      0
             if ((parachute_and_balloon == PIN_INSERTED) && (_safetySwitchValue == PIN_REMOVED) && (_safety_switch_was == PIN_INSERTED)) {
                 printf("Turn LED's On!\n");
 

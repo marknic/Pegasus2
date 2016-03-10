@@ -63,5 +63,5 @@ extern "C" void __cxa_pure_virtual() {;}
 #define portOutputRegister(P)
 #define portInputRegister(P)
 #define portModeRegister(P)
-#include <..\LaunchGroundStationP2\LaunchGroundStationP2.ino>
+#include <..\Pegasus2SatelitePosition\Pegasus2SatelitePosition.ino>
 #endif
