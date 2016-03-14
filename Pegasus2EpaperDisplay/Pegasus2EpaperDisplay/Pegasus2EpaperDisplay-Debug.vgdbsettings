@@ -7,14 +7,14 @@
       <PathStyle>RemoteUnix</PathStyle>
     </CustomSourceDirectories>
     <BuildHost>
-      <HostName>192.168.1.145</HostName>
+      <HostName>192.168.3.100</HostName>
       <Transport>SSH</Transport>
       <UserName>pi</UserName>
     </BuildHost>
     <MainSourceTransferCommand>
       <SkipWhenRunningCommandList>false</SkipWhenRunningCommandList>
       <RemoteHost>
-        <HostName>192.168.1.145</HostName>
+        <HostName>192.168.3.100</HostName>
         <Transport>SSH</Transport>
         <UserName>pi</UserName>
       </RemoteHost>
@@ -157,6 +157,7 @@
     <ShowMessageAfterExecuting>true</ShowMessageAfterExecuting>
   </CustomShortcuts>
   <UserDefinedVariables />
+  <ImportedPropertySheets />
   <CodeSense>
     <Enabled>Unknown</Enabled>
     <ExtraSettings>

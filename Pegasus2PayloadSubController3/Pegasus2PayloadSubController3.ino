@@ -33,6 +33,7 @@
 #define PROC3_COMMAND_STRATOSPHERE           11
 #define PROC3_COMMAND_SPEED_200              12
 #define PROC3_COMMAND_SPEED_300              13
+#define PROC3_COMMAND_INITIALIZING           14
 
 
 
@@ -44,6 +45,7 @@
 #define FALSE                                                    0
 #endif
 
+void display_startup_text();
 void Ring1Complete();
 
 char _display_text[USER_MSG_ADJUSTED_MAX_LEN];
@@ -66,7 +68,7 @@ char* _reached_stratosphere = "We've reached the stratosphere!";
 char* _speed_200 = "We're falling over 200 MPH!";
 char* _speed_300 = "We're falling over 300 MPH! AAAAAHHHHHHH!";
 char* _pegasus_2 = "-- PEGASUS II -- We're Flying!";
-
+char* _pegasus_init = "-- PEGASUS II -- Initializing...";
 
 int userTextBytesRead = 0;
 uint8_t displayTextLength;
@@ -137,8 +139,8 @@ void display_text(char* text_to_display)
 // callback for received data
 void receiveData(int byteCount) {
 
-    //Serial.print("byteCount: ");
-    //Serial.println(byteCount);
+    Serial.print("byteCount: ");
+    Serial.println(byteCount);
 
     if (byteCount == 1) {
         int command = Wire.read();
@@ -200,6 +202,10 @@ void receiveData(int byteCount) {
                 break;
             case PROC3_COMMAND_SPEED_300:
                 display_text(_speed_300);
+                break;
+            case PROC3_COMMAND_INITIALIZING:
+                display_text_no_timer(_pegasus_init);
+                _timer.after(10000, display_startup_text);
                 break;
             default:
                 Serial.print("default - error: # ");
@@ -328,7 +334,8 @@ void setup()
     //Serial.println("Theater Chase...");
     
     // Kick off a pattern
-    Ring1.TheaterChase(Ring1.Color(255, 255, 0), Ring1.Color(0, 0, 0), 100);
+    Ring1.TheaterChase(Ring1.Color(255, 255, 255), Ring1.Color(0, 0, 0), 100);
+
 
     //Serial.println("Watchdog...");
     
@@ -344,7 +351,7 @@ void setup()
 
     _timer.oscillate(LED_BUILTIN, 1000, HIGH, 10);
 
-    //Serial.println("Startup Text...");
+    Serial.println("Startup Text...");
     
     _timer.after(10000, display_startup_text);
 }

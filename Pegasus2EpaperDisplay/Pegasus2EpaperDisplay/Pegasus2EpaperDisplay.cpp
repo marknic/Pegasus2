@@ -39,7 +39,8 @@ int _output_row_count = 0;
 char words[MAX_WORD_COUNT][DATA_ARRAY_STR_LEN];
 char rows[ROW_COUNT][DATA_ARRAY_STR_LEN];
 
-UartStream _serialStream_Main('0', process_message_data, FALSE, "MsgDisplay 1");
+//UartStream _serialStream_Main('0', process_message_data, FALSE, "MsgDisplay 1");
+UartStream* _serialStream_Main;
 
 time_t _current_time;
 
@@ -289,12 +290,14 @@ int main(int argc, char *argv[])
 {
     int received0;
     
+    _serialStream_Main = new UartStream('0', process_message_data, FALSE, "MsgDisplay 1");
+    
     printf("Pegasus2EpaperDisplay Running...\n");
     
     write_to_log("APP", "Starting Application...\n");
 
     while (TRUE) {
-        received0 = _serialStream_Main.uart_receive();
+        received0 = _serialStream_Main->uart_receive();
 
         usleep(1000);
     }

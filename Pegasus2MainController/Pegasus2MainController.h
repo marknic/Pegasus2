@@ -16,7 +16,7 @@
 #define PACKET_LENGTH                        32
 #define SIZES_PACKET_LENGTH                   3
                                           
-#define CRAFT_NOTE_COUNT                     17
+#define CRAFT_NOTE_COUNT                     18
 #define CRAFT_NOTE_TEXT_LENGTH               60
 #define LIFTOFF_POS                           0
 #define SAFE_MODE_POS                         1
@@ -35,6 +35,7 @@
 #define LIGHTS_ON_POS                        14
 #define LIGHTS_OFF_POS                       15
 #define PEGASUS_I_POS                        16
+#define PEGASUS_II_RTF                       17
                                           
 #define CRAFT_MESSAGE_NOT_SENT                0
 #define CRAFT_MESSAGE_SENT                    1
@@ -98,6 +99,7 @@
 #define PROC3_COMMAND_STRATOSPHERE           11
 #define PROC3_COMMAND_SPEED_200              12
 #define PROC3_COMMAND_SPEED_300              13
+#define PROC3_COMMAND_INITIALIZING           14
 
 
 // wiringPi Pins

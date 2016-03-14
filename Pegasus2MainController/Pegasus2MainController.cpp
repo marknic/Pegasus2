@@ -119,7 +119,7 @@ uint8_t _craft_notes_flags[CRAFT_NOTE_COUNT] = {
     CRAFT_MESSAGE_NOT_SENT, CRAFT_MESSAGE_NOT_SENT, CRAFT_MESSAGE_NOT_SENT, CRAFT_MESSAGE_NOT_SENT, 
     CRAFT_MESSAGE_NOT_SENT, CRAFT_MESSAGE_NOT_SENT, CRAFT_MESSAGE_NOT_SENT, CRAFT_MESSAGE_NOT_SENT, 
     CRAFT_MESSAGE_MULTISEND, CRAFT_MESSAGE_MULTISEND, CRAFT_MESSAGE_MULTISEND, CRAFT_MESSAGE_MULTISEND,
-    CRAFT_MESSAGE_NOT_SENT};
+    CRAFT_MESSAGE_NOT_SENT, CRAFT_MESSAGE_NOT_SENT};
 
 char _craft_notes[CRAFT_NOTE_COUNT][CRAFT_NOTE_TEXT_LENGTH] = {
     "}N:PII - Liftoff - Pegasus 2 is Flying",
@@ -138,7 +138,9 @@ char _craft_notes[CRAFT_NOTE_COUNT][CRAFT_NOTE_TEXT_LENGTH] = {
     "}N:PII - Autodeploy Altitude Set to: %d'",
     "}N:PII - UFO Lights On",
     "}N:PII - UFO Lights Off",
-    "}N:PII - Reached Pegasus-I max altitude: 85000'"
+    "}N:PII - Reached Pegasus-I max altitude: 85000'",
+    "}N:PII - Pegasus II - Ready to fly!"
+
 };
 
 
@@ -241,6 +243,9 @@ AltitudePressure  _altitudePressure;
 int get_altitude_index(double altitude);
 void TestStep();
 
+char _testGpsDataString[GPS_DATA_BUFFER_LEN]; 
+
+
 #endif
 
 
@@ -261,7 +266,11 @@ void display_switch_values()
 }
 
 
-
+// Code that evaluates the current value of the "safety switch"
+// (The extern switch activated by inserting a pin)
+// This pin indicates when the craft is on the ground and ready (or not) to fly
+// It also indicates when the automatically shut down the processor (when the balloon
+// AND parachute pins are removed - after the flight)
 void safety_switch_check() {
 
     _safetySwitchValue = digitalRead(GPIO_PIN_SAFETY);
@@ -296,6 +305,11 @@ void safety_switch_check() {
                 printf("Turn LED's On!\n");
 
                 switch_leds(TRUE);
+                
+                if (_craft_notes_flags[PEGASUS_II_RTF] == CRAFT_MESSAGE_NOT_SENT)
+                {
+                    send_craft_message(PEGASUS_II_RTF, MESSAGE_NO_VALUE);
+                }
             }
         }
     }
@@ -335,15 +349,7 @@ void evaluate_data() {
                 _subProc3.send_command(PROC3_COMMAND_GOING_UP);
             }
         }
-
-        //if (_craft_notes_flags[SAFE_MODE_POS] == CRAFT_MESSAGE_NOT_SENT) {
-        //    double altDif = _current_altitude - _initialAltitude;
-
-        //    if (altDif > 200) {
-        //        send_craft_message(SAFE_MODE_POS, MESSAGE_NO_VALUE);
-        //    }
-        //}
-
+        
         if ((_craft_notes_flags[ABOVE_TRAFFIC_POS] == CRAFT_MESSAGE_NOT_SENT) && (_current_altitude > ALTITUDE_ABOVE_TRAFFIC)) {
             send_craft_message(ABOVE_TRAFFIC_POS, MESSAGE_NO_VALUE);
             _subProc3.send_command(PROC3_COMMAND_ABOVE_TRAFFIC);
@@ -530,6 +536,7 @@ double do_speed_conversion(double speedKnots) {
 }
 
 
+// Check a string to see if it begins with the provided characters
 bool starts_with(char* stringToCheck, char* startsWith)
 {
     if ((stringToCheck == NULL) || (startsWith == NULL)) return FALSE;
@@ -655,6 +662,7 @@ void process_gps2_data(char* dataLine) {
     }
 }
 
+
 void process_gps2_invalid_data(char* dataLine) {
     write_to_log("GP2-Invalid", dataLine);
 }
@@ -779,9 +787,7 @@ int findChar(char *dataIn, char charToFind, int startChar) {
 }
 
 
-
-
-
+// Split a string based on a delimiter character
 int strsplit(const char* str, const char* delim, char dataArray[][DATA_ARRAY_STR_LEN]) {
     // copy the original string so that we don't overwrite parts of it
     // (don't do this if you don't need to keep the old line,
@@ -1015,6 +1021,7 @@ int file_exists(char* filename)
     return 1;
 }
 
+
 void initialize_log(char* filename)
 {
     FILE* fd;
@@ -1201,7 +1208,6 @@ double calculate_vertical_speed(double altitude, double seconds) {
     return mps;
 }
 
-char _testGpsDataString[GPS_DATA_BUFFER_LEN]; 
 
 /**
 * \fn send_telemetry
@@ -1407,7 +1413,7 @@ sprintf(sensorData, "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s",
         pressureTemp,                                                               //  4 - pressure temp
         humidity,                                                                   //  5 - humidity
 
-        tmp36,                                                                      //  6 - temp in
+        pressureTemp,                                                                      //  6 - temp in
         thermoCouple,                                                               //  7 - temp out
         voltageMain,                                                                //  8 - main battery voltage
         voltageAux,                                                                 //  9 - aux battery voltage
@@ -1781,6 +1787,7 @@ int rotate_video_camera(char position) {
 
     _subProc1.send_command(PROC1_COMMAND_POSITION_CAMERA_OUT);
     usleep(100000);
+    
     _subProc1.send_command(PROC1_COMMAND_POSITION_CAMERA_OUT);
     usleep(100000);
       
@@ -2236,7 +2243,13 @@ int test_uart_streams(char uartNumber)
     return result;
 }
 
-char* tst;
+
+
+void show_initializing()
+{
+    _subProc3.send_command(PROC3_COMMAND_INITIALIZING);
+}
+
 
 /**
 * \fn main
@@ -2407,12 +2420,15 @@ int main(int argc, char *argv [])
 #endif
 
     
-    display_user_message("Pegasus II Initializing...");
+    //display_user_message("Pegasus II Initializing...");
     
     
     _telemetry_timer.every(1000, get_m1_data);
     
     _telemetry_timer.every(2000, send_telemetry);
+    
+    
+    _telemetry_timer.after(5000, show_initializing);
     
     int received0;
 

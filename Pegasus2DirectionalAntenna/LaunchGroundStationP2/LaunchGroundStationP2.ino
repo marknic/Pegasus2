@@ -372,7 +372,7 @@ void setup()
     //pinMode(GPS_RESET_PIN, INPUT);
 
     //  Uncomment the next line and run to reset the eeprom (lat/lon) values
-    //reset_eeprom_values(GPS_OFFSET_N);
+    //reset_eeprom_values(GPS_OFFSET_W);
 
     get_eeprom_data();
 

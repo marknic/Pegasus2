@@ -52,6 +52,7 @@ public:
 
     // Update the Theater Chase Pattern
     void TheaterChaseUpdate();
+    void TheaterChaseUpdate2();
 
     // Initialize for a ColorWipe
     void ColorWipe(uint32_t color, uint8_t interval, direction dir = FORWARD);

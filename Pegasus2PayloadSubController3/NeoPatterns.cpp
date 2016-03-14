@@ -20,7 +20,7 @@ void NeoPatterns::Update()
                 RainbowCycleUpdate();
                 break;
             case THEATER_CHASE:
-                TheaterChaseUpdate();
+                TheaterChaseUpdate2();
                 break;
             case COLOR_WIPE:
                 ColorWipeUpdate();
@@ -112,6 +112,28 @@ void NeoPatterns::TheaterChase(uint32_t color1, uint32_t color2, uint8_t interva
     Color2 = color2;
     Index = 0;
     Direction = dir;
+}
+
+// Update the Theater Chase Pattern
+void NeoPatterns::TheaterChaseUpdate2()
+{
+    for (int i = 0; i< numPixels(); i++)
+    {
+        int remainder = (i + Index) % 4;
+
+        if ((remainder == 0) || (remainder == 1))
+        {
+            setPixelColor(i, Color1);
+        }
+        else
+        {
+            setPixelColor(i, Color2);
+        }
+    }
+
+    show();
+    
+    Increment();
 }
 
 // Update the Theater Chase Pattern
