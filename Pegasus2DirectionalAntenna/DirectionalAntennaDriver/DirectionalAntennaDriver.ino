@@ -695,6 +695,8 @@ void setup() {
 
 void loop() {
    
+    char _directional_data[16];
+
     _timer.update();
 
     // Data from ground station 
@@ -742,6 +744,14 @@ void loop() {
 
                     _targetDir.azimuth = atof(&_az_el_msg[1]);
                     _targetDir.elevation = atof(&_az_el_msg[7]);
+
+                    char az[8];
+                    char el[8];
+
+                    dtostrf(_currentDirectionalValues.azimuth, 5, 1, az);
+                    dtostrf(_currentDirectionalValues.elevation, 5, 1, el);
+
+                    sprintf(_directional_data, "|%s,%s\n", az, el);
 
 
 #ifdef DEBUG_SERIAL_COM

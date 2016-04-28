@@ -61,7 +61,7 @@
 
 #define POS_LAT                                            23
 #define POS_LON                                            24
-#define POS_ALT                                            25
+#define POS_ALT                                             2
 
 #define TMP_36_PIN                                         A0
 #define REFERENCE_VOLTAGE                                 5.0

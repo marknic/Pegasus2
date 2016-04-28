@@ -176,6 +176,7 @@ char _proc1SensorBuffer[PROC1_BUFFER_LEN];
 char _telemetry_data_string[TELEMETRY_DATA_LEN];
 char _tmp_log_data[GENERAL_BUFFER_LEN];
 
+
 typedef struct {
     double lat;
     double lon;
@@ -266,6 +267,7 @@ void display_switch_values()
 }
 
 
+
 // Code that evaluates the current value of the "safety switch"
 // (The extern switch activated by inserting a pin)
 // This pin indicates when the craft is on the ground and ready (or not) to fly
@@ -287,6 +289,8 @@ void safety_switch_check() {
     //                                   1                                    1                                      0
     if ((parachute_and_balloon == PIN_REMOVED) && (_safety_switch_was == PIN_REMOVED) && (_safetySwitchValue == PIN_INSERTED)) {
         printf("Initiate Shutdown!\n");
+        
+        switch_leds(FALSE);
         
         write_to_log("SSW", "Initiate Shutdown! -- sudo shutdown -h now being executed\n");
         
@@ -317,7 +321,7 @@ void safety_switch_check() {
     _safety_switch_was = _safetySwitchValue;
 }
 
-
+uint8_t _ascent_lights = TRUE;
 
 /**
 * \fn evaluate_data
@@ -341,10 +345,10 @@ void evaluate_data() {
         if (_craft_notes_flags[LIFTOFF_POS] == CRAFT_MESSAGE_NOT_SENT) {
             double altDif = _current_altitude - _initialAltitude;
 
-            // Start the timer
-            _initial_time = _current_time;
-
             if (altDif > 200.0) {
+                // Start the timer
+                _initial_time = _current_time;
+
                 send_craft_message(LIFTOFF_POS, MESSAGE_NO_VALUE);
                 _subProc3.send_command(PROC3_COMMAND_GOING_UP);
             }
@@ -491,6 +495,22 @@ void evaluate_data() {
                 write_to_log("EVAL", "evaluate_data: time limit relase balloon now!\n");
                 debug_print("evaluate_data: time limit relase balloon now!");
                 release_balloon_now();
+            }
+        }
+        
+        
+        // if above 5,000'
+        if (_ascent_lights && (_current_altitude > 1500))
+        {
+            _ascent_lights = FALSE;
+            switch_leds(FALSE); 
+        }
+        else
+        {
+            if ((_ascent_lights == FALSE) && (_current_altitude < 1500))
+            {
+                _ascent_lights = TRUE;
+                switch_leds(TRUE); 
             }
         }
     }
@@ -1223,19 +1243,46 @@ void send_telemetry() {
 
 #if (!TEST_TELEMETRY)
 
-    if (_gpsLat1 == 0.0) {
-        if (_gpsLat2 == 0.0) {
-            gpsDataPtr = _lastGpsDataString;
-        }
-        else {
-            strcpy(_lastGpsDataString, _gpsDataString2);
-            gpsDataPtr = _gpsDataString2;
-        }
-    }
-    else {
+    
+    if (_gps1_gotFix && (_gpsLat1 != 0.0))
+    {
         strcpy(_lastGpsDataString, _gpsDataString1);
         gpsDataPtr = _gpsDataString1;
     }
+    else if (_gps2_gotFix && (_gpsLat2 != 0.0))
+    {
+        strcpy(_lastGpsDataString, _gpsDataString2);
+        gpsDataPtr = _gpsDataString2;
+    } 
+    else if (_gpsLat1 != 0.0)
+    {
+        strcpy(_lastGpsDataString, _gpsDataString1);
+        gpsDataPtr = _gpsDataString1;
+    }
+    else if (_gpsLat2 != 0.0)
+    {
+        strcpy(_lastGpsDataString, _gpsDataString2);
+        gpsDataPtr = _gpsDataString2;
+    }
+    else
+    {
+        gpsDataPtr = _lastGpsDataString;
+    }
+    
+    //if (_gpsLat1 == 0.0) {
+        //if (_gpsLat2 == 0.0) {
+            //gpsDataPtr = _lastGpsDataString;
+        //}
+        //else {
+            //strcpy(_lastGpsDataString, _gpsDataString2);
+            //gpsDataPtr = _gpsDataString2;
+        //}
+    //}
+    //else {
+        //strcpy(_lastGpsDataString, _gpsDataString1);
+        //gpsDataPtr = _gpsDataString1;
+    //}
+    
 #else 
     
     TestStep();
@@ -1243,7 +1290,7 @@ void send_telemetry() {
 #endif
                 
     _balloonSwitchValue = !digitalRead(GPIO_PIN_BALLOON);
-    _parachuteSwitchValue = !digitalRead(GPIO_PIN_PARACHUTE);
+    //_parachuteSwitchValue = !digitalRead(GPIO_PIN_PARACHUTE);
     
 #if (TEST_TELEMETRY)
 
@@ -1345,10 +1392,6 @@ void send_telemetry() {
     }
 
 #endif
-
-
-    //_smoothed_altitude = smooth(_current_altitude);
-    //_smoothed_altitude = _current_altitude;
 
     _telemetry_sent_count++;
 
@@ -1712,7 +1755,9 @@ int deploy_parachute_now() {
 
     write_to_log("BAP", _tmp_log_data);
     
-    switch_leds(TRUE);
+    _parachuteSwitchValue = 1;
+    
+    //switch_leds(TRUE);
 
 #if (TEST_TELEMETRY)
     
@@ -2259,6 +2304,8 @@ void show_initializing()
 int main(int argc, char *argv [])
 {	
     initialize_log(TELEMETRY_LOG_FILE);
+    
+    _altitude_calculation.Initialize(2.8, 188.0, 1004.5);
    
     initialize_serial_devices();
     
@@ -2280,6 +2327,7 @@ int main(int argc, char *argv [])
     _subProc1.send_command(PROC3_COMMAND_RESET);
     
     _subProc1.send_command(PROC1_COMMAND_RESET_SERVOS);
+    
     
 #if (TEST_TELEMETRY)
 
@@ -2420,13 +2468,9 @@ int main(int argc, char *argv [])
 #endif
 
     
-    //display_user_message("Pegasus II Initializing...");
-    
-    
     _telemetry_timer.every(1000, get_m1_data);
     
     _telemetry_timer.every(2000, send_telemetry);
-    
     
     _telemetry_timer.after(5000, show_initializing);
     

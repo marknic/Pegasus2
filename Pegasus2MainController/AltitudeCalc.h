@@ -2,9 +2,9 @@
 
 #define _ALTITUDE_CALC_H
 #include "AltitudePressureValues.h"
-#include <math.h>
 
-#define ALTITUDE_CALCE_IS_INITIALIZED   0xBEAD
+
+#define ALTITUDE_CALCE_IS_INITIALIZED   0xBEAD 
 
 class AltitudeCalc
 {
@@ -18,9 +18,16 @@ private:
     double StaticTemp; // [K]
     double CgRGas; //(GravitationalAccelerationConstant * convertFtToMeters) / crGasSi;
     double ConvertFtToMeters;
+    double StandardLapseRate;
+    double ConvertToKelvinTemp;
+    double StandardMslTemp;
+    double StandardMslPressure;
 
     AltitudePressureValues* StaticValues[7];
 
+    double _tempMsl;
+    double _presMsl;
+    
     int is_initialized;
 
 public:
@@ -33,7 +40,13 @@ public:
 
     int CalculateAltitude(double pressure);
 
-    void Initialize();
+    void InitializeValues();
+    
+    void Initialize(double stationTemperature, double stationAltitude, double stationPressure);
+    
+    double CalculatePressureAtMsl(double stationPressure, double stationAltitude, double temperatureAtMsl);
+
+    double CalculateTempAtMsl(double stationTemperature, double stationAltitude);
 
 };
 

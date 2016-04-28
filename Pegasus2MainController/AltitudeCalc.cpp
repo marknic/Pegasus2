@@ -1,9 +1,9 @@
 #include "AltitudeCalc.h"
-
+#include <cmath>
 
 AltitudeCalc::AltitudeCalc()
 {
-    Initialize();
+    InitializeValues();
 }
 
 
@@ -11,7 +11,7 @@ AltitudeCalc::~AltitudeCalc()
 {
 }
 
-void AltitudeCalc::Initialize()
+void AltitudeCalc::InitializeValues()
 {
     UniversalGasConstant = 8.31432;
     GravitationalAccelerationConstant = 9.80665;
@@ -22,7 +22,13 @@ void AltitudeCalc::Initialize()
     StaticTemp = 216.65; // [K]
     CgRGas = 0.01041294436915830874437821586954; //(GravitationalAccelerationConstant * convertFtToMeters) / crGasSi;
     ConvertFtToMeters = 0.3048;
+    StandardLapseRate = 0.0065;
+    ConvertToKelvinTemp = 273.15;
+    StandardMslTemp = 288.15;
+    StandardMslPressure = 101325.00;
 
+    _tempMsl = StandardMslTemp;
+    _presMsl = StandardMslPressure;
 
     StaticValues[0] = new AltitudePressureValues(101325.00, 0, 288.15, -0.0065);
     StaticValues[1] = new AltitudePressureValues(22632.10, 11000, 288.15, 0.0);
@@ -39,7 +45,7 @@ void AltitudeCalc::Initialize()
 double AltitudeCalc::CalcAltitudeWithLapse(double pressure, int index)
 {
     if (is_initialized != ALTITUDE_CALCE_IS_INITIALIZED) {
-        Initialize();
+        InitializeValues();
     }
 
     double staticTempLapse = StaticValues[index]->Temperature / StaticValues[index]->LapseRate;
@@ -76,12 +82,12 @@ int AltitudeCalc::CalculateAltitude(double pressure)
 
     pressure = pressure * 100.0;
 
-    if (pressure > 22632.1) index = 0;
-    else if (pressure > 5474.89) index = 1;
-    else if (pressure > 868.02) index = 2;
-    else if (pressure > 110.91) index = 3;
-    else if (pressure > 66.94) index = 4;
-    else if (pressure > 3.96) index = 5;
+    if (pressure >= 22632.1) index = 0;
+    else if (pressure >= 5474.89) index = 1;
+    else if (pressure >= 868.02) index = 2;
+    else if (pressure >= 110.91) index = 3;
+    else if (pressure >= 66.94) index = 4;
+    else if (pressure >= 3.96) index = 5;
     else index = 6;
 
     if ((index == 1) || (index == 4))
@@ -96,3 +102,38 @@ int AltitudeCalc::CalculateAltitude(double pressure)
     return altitude;
 }
 
+
+void AltitudeCalc::Initialize(double stationTemperature, double stationAltitude, double stationPressure)
+{
+    _tempMsl = CalculateTempAtMsl(stationTemperature, stationAltitude);
+    _presMsl = CalculatePressureAtMsl(stationPressure, stationAltitude, _tempMsl);
+
+    StaticValues[0]->Pressure = _presMsl;
+    StaticValues[0]->Temperature = _tempMsl + ConvertToKelvinTemp;
+}
+
+
+double AltitudeCalc::CalculatePressureAtMsl(double stationPressure, double stationAltitude, double temperatureAtMsl)
+{
+    double pressureAtMsl = (stationPressure * 100.0) / 
+                           pow(1 - ((StandardLapseRate*stationAltitude) / (temperatureAtMsl + ConvertToKelvinTemp)),
+        ((GravitationalAccelerationConstant*MolarMass) /
+         (UniversalGasConstant*StandardLapseRate)));
+
+    return pressureAtMsl;
+}
+
+
+double AltitudeCalc::CalculateTempAtMsl(double stationTemperature, double stationAltitude)
+{
+
+    // "real" calculation
+    //double temperatureAtMsl = stationTemperature -
+    //                          GravitationalAccelerationConstant * ((finalAltitude/1000) - (stationAltitude / 1000.0));
+
+    // Calculation using 0 as final altitude by default
+    double temperatureAtMsl = stationTemperature -
+                              GravitationalAccelerationConstant*(0.0 - (stationAltitude / 1000.0));
+
+    return temperatureAtMsl;
+}
