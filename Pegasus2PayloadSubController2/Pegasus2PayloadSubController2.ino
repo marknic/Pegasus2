@@ -1,12 +1,14 @@
 #include "Timer.h"
 #include <SPI.h>
 #include <Wire.h>
-#include <Adafruit_Sensor/Adafruit_Sensor.h>
+#include <Adafruit_Sensor.h>
 #include <Adafruit_LSM9DS0.h>
 #include <SparkFunHTU21D.h>
 #include <SparkFun_MS5803_I2C.h>
 #include <Adafruit_MAX31855.h>
-#include <avr/wdt.h>
+//#include <avr/wdt.h>
+
+#include <Adafruit_SleepyDog.h>
 
 #ifndef TRUE
 #define TRUE                             1==1
@@ -15,7 +17,9 @@
 #define FALSE                            0==1
 #endif
 
-#define DEBUG_DISPLAY                   FALSE
+#define DEBUG_DISPLAY                   TRUE
+
+#define INCLUDE_LSM                     TRUE                        
 
 #define TMP_36_PIN                         A0
 
@@ -51,7 +55,7 @@ HTU21D myHumidity;
 MS5803 pressure_sensor(ADDRESS_HIGH);
 
 
-char sensorData[160];
+char sensorData[96];
 
 double pressure_temperature_c;
 double pressure_abs;
@@ -61,57 +65,58 @@ double humidity_temp;
 double thermocouple_temp_c;
 
 
-void watchdogSetup()
-{
-    cli();  // Disables the interrupts so no other interrupts get called while we are setting up
-    wdt_reset();
-
-    /*
-    WDP  WDP  WDP  WDP  Time - out
-    3    2    1    0     (ms)
-    0    0    0    0      16
-    0    0    0    1      32
-    0    0    1    0      64
-    0    0    1    1     125
-    0    1    0    0     250
-    0    1    0    1     500
-    0    1    1    0    1000
-    0    1    1    1    2000
-    1    0    0    0    4000
-    1    0    0    1    8000
-    */
-
-    /*
-    WDTCSR configuration:
-    WDIE = 1: Interrupt Enable
-    WDE = 1 :Reset Enable
-    WDP3 = 0 :For 2000ms Time-out
-    WDP2 = 1 :For 2000ms Time-out
-    WDP1 = 1 :For 2000ms Time-out
-    WDP0 = 1 :For 2000ms Time-out
-    */
-
-    // Enter WatchDog configuration mode:
-    // (1 << 5) generated a byte with all zeros and one 1 at the 5th (counting from zero) bit from the right.
-    // hence, for example, (1<<WDCE) generates "00010000", since WDCE=4 (see datasheet 10.9.2)
-    WDTCSR |= (1 << WDCE) | (1 << WDE);
-
-    // Set WatchDog Settings:
-    //WDTCSR = (1<<WDE) | (1<<WDP3) | (1<<WDP2) | (1<<WDP1) | (1<<WDP0);
-    WDTCSR = (1 << WDIE) | (1 << WDE) | (1 << WDP2) | (1 << WDP1) | (1 << WDP0);
-
-    sei(); // enable interrupts
-}
+//void watchdogSetup()
+//{
+//    cli();  // Disables the interrupts so no other interrupts get called while we are setting up
+//    wdt_reset();
+//
+//    /*
+//    WDP  WDP  WDP  WDP  Time - out
+//    3    2    1    0     (ms)
+//    0    0    0    0      16
+//    0    0    0    1      32
+//    0    0    1    0      64
+//    0    0    1    1     125
+//    0    1    0    0     250
+//    0    1    0    1     500
+//    0    1    1    0    1000
+//    0    1    1    1    2000
+//    1    0    0    0    4000
+//    1    0    0    1    8000
+//    */
+//
+//    /*
+//    WDTCSR configuration:
+//    WDIE = 1: Interrupt Enable
+//    WDE = 1 :Reset Enable
+//    WDP3 = 0 :For 2000ms Time-out
+//    WDP2 = 1 :For 2000ms Time-out
+//    WDP1 = 1 :For 2000ms Time-out
+//    WDP0 = 1 :For 2000ms Time-out
+//    */
+//
+//    // Enter WatchDog configuration mode:
+//    // (1 << 5) generated a byte with all zeros and one 1 at the 5th (counting from zero) bit from the right.
+//    // hence, for example, (1<<WDCE) generates "00010000", since WDCE=4 (see datasheet 10.9.2)
+//    WDTCSR |= (1 << WDCE) | (1 << WDE);
+//
+//    // Set WatchDog Settings:
+//    //WDTCSR = (1<<WDE) | (1<<WDP3) | (1<<WDP2) | (1<<WDP1) | (1<<WDP0);
+//    WDTCSR = (1 << WDIE) | (1 << WDE) | (1 << WDP2) | (1 << WDP1) | (1 << WDP0);
+//
+//    sei(); // enable interrupts
+//}
 
 
 void watchdog_reset() {
-    wdt_reset();
+    //wdt_reset();
+    Watchdog.reset();
 }
 
 
 void setup()
 {
-    analogReference(INTERNAL);
+    //analogReference(INTERNAL);
 
     Wire.begin();
 
@@ -128,7 +133,8 @@ void setup()
     /* Setup the sensor gain and integration time */
     configureSensors();
 
-    watchdogSetup();
+    //watchdogSetup();
+    Watchdog.enable(2048);
 
     _timer.every(1000, watchdog_reset);
     _timer.every(250, sendSensorSamples);
@@ -138,6 +144,7 @@ void setup()
 
 #if (DEBUG_DISPLAY)
     Serial.println("end of setup");
+    //Serial.println("end of setup");
 #endif
 }
 
@@ -172,11 +179,13 @@ char scratch14[12];
 // This can run at max, 4x/sec (250ms)
 void sendSensorSamples() {
 
+#if INCLUDE_LSM
     //lsm.read();
 
     sensors_event_t accel, mag, gyro, temp;
 
     lsm.getEvent(&accel, &mag, &gyro, &temp);
+#endif
 
     humidity = myHumidity.readHumidity();
     humidity_temp = myHumidity.readTemperature();
@@ -191,10 +200,10 @@ void sendSensorSamples() {
 
     if (isnan(thermocouple_temp_c)) {
         thermocouple_temp_c = -999.0;
-    } else
-    {
+        } else
+        {
         _thermocouple_temp_c_previous = thermocouple_temp_c;
-    }
+        }
 
     //if ((thermocouple_temp_c <= _thermocouple_temp_c_previous + THERMOCOUPLE_VARIABILITY) &&
     //    (thermocouple_temp_c >= _thermocouple_temp_c_previous - THERMOCOUPLE_VARIABILITY))
@@ -224,6 +233,9 @@ void sendSensorSamples() {
         _temperatureC_previous = temperatureC;
     }
 
+    Serial.print("TMP36: ");
+    Serial.println(temperatureC);
+
    /* if ((temperatureC <= _thermocouple_temp_c_previous + THERMOCOUPLE_VARIABILITY) &&
         (temperatureC >= _thermocouple_temp_c_previous - THERMOCOUPLE_VARIABILITY))
     {
@@ -236,22 +248,22 @@ void sendSensorSamples() {
 
 
    
-    sprintf(sensorData, "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s",
-        dtostrf(pressure_abs, 3, 1, scratch01),
-        dtostrf(pressure_temperature_c, 3, 1, scratch02),  
-        dtostrf(humidity, 3, 1, scratch03),
-        dtostrf(thermocouple_temp_c, 3, 1, scratch04),
-        dtostrf(accel.acceleration.x, 3, 1, scratch05),
-        dtostrf(accel.acceleration.y, 3, 1, scratch06),
-        dtostrf(accel.acceleration.z, 3, 1, scratch07),
-        dtostrf(gyro.gyro.x, 3, 1, scratch08),
-        dtostrf(gyro.gyro.y, 3, 1, scratch09),
-        dtostrf(gyro.gyro.z, 3, 1, scratch10),
-        dtostrf(mag.magnetic.x, 3, 1, scratch11),
-        dtostrf(mag.magnetic.y, 3, 1, scratch12),
-        dtostrf(mag.magnetic.z, 3, 1, scratch13),
-        dtostrf(temperatureC, 3, 1, scratch14)
-        );
+    //sprintf(sensorData, "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s",
+    //    dtostrf(pressure_abs, 3, 1, scratch01),
+    //    dtostrf(pressure_temperature_c, 3, 1, scratch02),  
+    //    dtostrf(humidity, 3, 1, scratch03),
+    //    dtostrf(thermocouple_temp_c, 3, 1, scratch04),
+    //    dtostrf(accel.acceleration.x, 3, 1, scratch05),
+    //    dtostrf(accel.acceleration.y, 3, 1, scratch06),
+    //    dtostrf(accel.acceleration.z, 3, 1, scratch07),
+    //    dtostrf(gyro.gyro.x, 3, 1, scratch08),
+    //    dtostrf(gyro.gyro.y, 3, 1, scratch09),
+    //    dtostrf(gyro.gyro.z, 3, 1, scratch10),
+    //    dtostrf(mag.magnetic.x, 3, 1, scratch11),
+    //    dtostrf(mag.magnetic.y, 3, 1, scratch12),
+    //    dtostrf(mag.magnetic.z, 3, 1, scratch13),
+    //    dtostrf(temperatureC, 3, 1, scratch14)
+    //    );
 
 
     Serial1.print(sensorData);
@@ -294,7 +306,7 @@ void configureSensors(void)
     {
 #if (DEBUG_DISPLAY)
         /* There was a problem detecting the LSM9DS0 ... check your connections */
-        Serial.print(F("Ooops, no LSM9DS0 detected ... Check your wiring or I2C ADDR!"));
+        //Serial.print(F("Ooops, no LSM9DS0 detected ... Check your wiring or I2C ADDR!"));
 #endif
 
         //while (1);
@@ -302,7 +314,7 @@ void configureSensors(void)
     }
 
 #if (DEBUG_DISPLAY)
-    Serial.println(F("Found LSM9DS0 9DOF"));
+    //Serial.println(F("Found LSM9DS0 9DOF"));
 #endif
 
     myHumidity.begin();

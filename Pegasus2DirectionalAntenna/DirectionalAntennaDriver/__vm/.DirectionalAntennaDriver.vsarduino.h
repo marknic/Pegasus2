@@ -14,7 +14,7 @@
 #define __AVR_ATmega328P__
 #define _VMDEBUG 1
 #define F_CPU 16000000L
-#define ARDUINO 10605
+#define ARDUINO 10608
 #define ARDUINO_AVR_UNO
 #define ARDUINO_ARCH_AVR
 #define __cplusplus 201103L
@@ -41,7 +41,6 @@
 #endif
 #define NEW_H
 typedef void *__builtin_va_list;
-typedef unsigned char byte;
 extern "C" void __cxa_pure_virtual() {;}
 
 
@@ -51,24 +50,12 @@ extern "C" void __cxa_pure_virtual() {;}
 #undef F
 #define F(string_literal) ((const PROGMEM char *)(string_literal))
 #undef PSTR
-#define PSTR(string_literal) ((const PROGMEM char *)(string_literal))
-#undef cli
-#define cli()
-#define pgm_read_byte(address_short)
-#define pgm_read_word(address_short)
-#define pgm_read_word2(address_short)
-#define digitalPinToPort(P)
-#define digitalPinToBitMask(P) 
-#define digitalPinToTimer(P)
-#define analogInPinToBit(P)
-#define portOutputRegister(P)
-#define portInputRegister(P)
-#define portModeRegister(P)
-#include <..\DirectionalAntennaDriver\DirectionalAntennaDriver.ino>
-#include <..\DirectionalAntennaDriver\AppTimer.cpp>
-#include <..\DirectionalAntennaDriver\AppTimer.h>
-#include <..\DirectionalAntennaDriver\CompassSensor.cpp>
-#include <..\DirectionalAntennaDriver\CompassSensor.h>
-#include <..\DirectionalAntennaDriver\Event.cpp>
-#include <..\DirectionalAntennaDriver\Event.h>
+#define PSTR(string_literal) ((const PROGMEM char *)(string_literal))")
+#include <DirectionalAntennaDriver.ino>
+#include <AppTimer.cpp>
+#include <AppTimer.h>
+#include <CompassSensor.cpp>
+#include <CompassSensor.h>
+#include <Event.cpp>
+#include <Event.h>
 #endif
